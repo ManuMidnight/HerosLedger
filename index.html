@@ -372,6 +372,9 @@
             if(f) me.photo = await compressImg(f);
             saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
         }
+        
+        saveRecent(me.code);
+
         if(me.role === 'master') { me.langs = [...ALL_LANGS]; }
         const lSelect = document.getElementById('current-lang');
         lSelect.innerHTML = "";
@@ -459,6 +462,12 @@
                 f.appendChild(d); f.scrollTop = f.scrollHeight;
             }
         });
+
+        campaignRef.child('messages').on('value', snap => {
+            if(!snap.exists()) {
+                document.getElementById('chat-flow').innerHTML = "";
+            }
+        });
     }
 
     function openManagePG(name) {
@@ -492,76 +501,60 @@
         let p = cachedNPCs[currentTargetPG];
         let conds = (p.cond || "").split(",").filter(c => c !== "");
         if(conds.includes(cond)) { conds = conds.filter(c => c !== cond); }
-        else { 
-            conds.push(cond);
-            campaignRef.child('messages').push({
-                sender: me.role === 'master' ? me.name : "Master", senderRole: 'master', photo: me.photo,
-                text: `${currentTargetPG} subisce la condizione di ${cond.toUpperCase()}`, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
-            });
-        }
-        campaignRef.child('players').child(currentTargetPG).update({ cond: conds.join(",") });
+        else { conds.push(cond); }
+        const newCond = conds.join(",");
+        campaignRef.child('players').child(currentTargetPG).update({ cond: newCond });
+        campaignRef.child('messages').push({
+            sender: "SISTEMA", senderRole: 'master', photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            text: `${currentTargetPG} ora è: ${newCond || 'Normale'}`, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
+        });
         showManageAction('CONDIZIONI');
     }
 
     function applyManageAction() {
-        const val = parseInt(document.getElementById('manage-value').value);
         const mode = document.getElementById('manage-value').dataset.mode;
-        if(!val) return;
+        const val = parseInt(document.getElementById('manage-value').value) || 0;
         let p = cachedNPCs[currentTargetPG];
         let newHp = p.hp;
-        let msg = "";
-        let msgType = "";
-        const masterName = me.role === 'master' ? me.name : "Master";
-
-        if(mode === 'DANNI') {
-            newHp = Math.max(0, p.hp - val);
-            msg = `${currentTargetPG} subisce ${val} danni. PF Attuali ${newHp}/${p.hpMax}`;
-            msgType = 'damage';
-            if(newHp === 0) {
-                if(p.type === 'PC') msg += ". " + currentTargetPG + " cade privo di sensi";
-                else msg = `${currentTargetPG} subisce ${val} danni. ${currentTargetPG} è morto 💀`;
+        if(mode === 'DANNI') { newHp -= val; }
+        else if(mode === 'GUARIGIONE') { newHp = Math.min(p.hpMax, newHp + val); }
+        if(newHp < 0) newHp = 0;
+        
+        let customMsg = "";
+        if(mode === 'DANNI' && newHp <= 0) {
+            if(p.type === 'PC') {
+                customMsg = `${p.name} subisce ${val} danni, PF Attuali 0/${p.hpMax}. ${p.name} cade privo di sensi.`;
+            } else {
+                customMsg = `${p.name} subisce ${val} danni. ${p.name} è morto 💀.`;
             }
         } else {
-            newHp = Math.min(p.hpMax, p.hp + val);
-            msg = `${currentTargetPG} recupera ${val} Punti ferita. PF Attuali ${newHp}/${p.hpMax}`;
-            msgType = 'heal';
+            customMsg = `${p.name} ${mode === 'DANNI' ? 'subisce' : 'riceve'} ${val} PF. (Attuali: ${newHp})`;
         }
 
         campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
         campaignRef.child('messages').push({
-            sender: masterName, senderRole: 'master', photo: me.photo,
-            text: msg, lang: "Comune", to: 'ALL', time: Date.now(), type: msgType
+            sender: "SISTEMA", senderRole: 'master', photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            text: customMsg,
+            lang: "Comune", to: 'ALL', time: Date.now(), type: mode === 'DANNI' ? 'damage' : 'heal'
         });
         closeManage();
     }
 
-    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; }
-    function openSettings() { document.getElementById('modal-settings').style.display = 'flex'; }
-    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
-    function saveSettings() {
-        const hp = parseInt(document.getElementById('set-hp').value);
-        const ac = parseInt(document.getElementById('set-ac').value);
-        let upd = {};
-        if(hp) { upd.hpMax = hp; upd.hp = hp; }
-        if(ac) upd.ac = ac;
-        campaignRef.child('players').child(me.name).update(upd);
-        closeSettings();
-    }
+    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; document.getElementById('manage-value').value = ""; }
 
     function sendMsg() {
         const input = document.getElementById('msg-input');
         const text = input.value.trim();
-        const lang = document.getElementById('current-lang').value;
         if(!text) return;
-
-        let to = 'ALL';
+        const lang = document.getElementById('current-lang').value;
         let sender = me.name;
         let photo = me.photo;
         let role = me.role;
+        let to = 'ALL';
 
         if(me.role === 'master') {
             const sChoice = document.getElementById('sender-choice').value;
-            if(sChoice !== 'MASTER') {
+            if(sChoice !== "MASTER") {
                 sender = sChoice;
                 photo = cachedNPCs[sChoice].photo;
                 role = 'npc';
@@ -569,35 +562,62 @@
             const recipient = document.getElementById('msg-recipient').value;
             if(recipient === 'MULTI') {
                 to = Array.from(document.querySelectorAll('.whisper-check:checked')).map(c => c.value);
-                if(to.length === 0) return alert("Seleziona almeno un destinatario!");
-            } else if(recipient !== 'ALL') { to = recipient; }
+            } else { to = recipient; }
         } else {
-            const pRecipient = document.getElementById('player-msg-recipient').value;
-            if(pRecipient !== 'ALL') to = pRecipient;
+            to = document.getElementById('player-msg-recipient').value;
         }
 
-        campaignRef.child('messages').push({ sender, senderRole: role, photo, text, lang, to, time: Date.now() });
+        campaignRef.child('messages').push({
+            sender: sender, senderRole: role, photo: photo, text: text, lang: lang, to: to, time: Date.now()
+        });
         input.value = "";
     }
 
-    function updateWhisperUI(val) { document.getElementById('multi-selector').style.display = (val === 'MULTI' ? 'block' : 'none'); }
-    function clearChat() { if(confirm("Vuoi pulire la chat?")) campaignRef.child('messages').remove(); }
-    function exitTavern() { if(confirm("Tornare alla locanda?")) location.reload(); }
+    function updateWhisperUI(val) {
+        document.getElementById('multi-selector').style.display = (val === 'MULTI' ? 'block' : 'none');
+    }
+
+    function clearChat() {
+        if(confirm("Vuoi cancellare tutta la cronologia?")) {
+            campaignRef.child('messages').remove();
+            document.getElementById('chat-flow').innerHTML = "";
+        }
+    }
+
+    function openSettings() {
+        document.getElementById('set-hp').value = me.hpMax;
+        document.getElementById('set-ac').value = me.ac;
+        document.getElementById('modal-settings').style.display = 'flex';
+    }
+    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
+    function saveSettings() {
+        const newMax = parseInt(document.getElementById('set-hp').value) || me.hpMax;
+        const newAC = parseInt(document.getElementById('set-ac').value) || me.ac;
+        me.hpMax = newMax; me.hp = newMax; me.ac = newAC;
+        campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: me.hpMax, ac: me.ac });
+        closeSettings();
+    }
+
+    function exitTavern() {
+        // Rimosso campaignRef.child('players').child(me.name).remove() per far restare i PG in chat
+        location.reload();
+    }
 
     function saveToVault(p) {
         let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
         v = v.filter(x => x.name !== p.name);
-        v.unshift(p);
-        localStorage.setItem('dd_vault', JSON.stringify(v.slice(0,10)));
+        v.push(p);
+        localStorage.setItem('dd_vault', JSON.stringify(v));
         loadVault();
     }
 
     function loadVault() {
+        const box = document.getElementById('pg-vault');
         const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        const box = document.getElementById('pg-vault'); box.innerHTML = "";
+        box.innerHTML = "";
         v.forEach(p => {
             const d = document.createElement('div'); d.className = 'vault-card';
-            d.innerHTML = `<div class="del-vault" onclick="event.stopPropagation(); deleteVault('${p.name}')">×</div>
+            d.innerHTML = `<span class="del-vault" onclick="event.stopPropagation(); deleteVault('${p.name}')">×</span>
                 <img src="${p.photo}"><div>${p.name}</div>`;
             d.onclick = () => {
                 document.getElementById('user-name').value = p.name;
@@ -620,13 +640,22 @@
         loadVault();
     }
 
+    function saveRecent(code) {
+        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        r = r.filter(x => x !== code);
+        r.unshift(code);
+        if(r.length > 5) r.pop();
+        localStorage.setItem('recent_rooms', JSON.stringify(r));
+        updateRecentUI();
+    }
+
     function updateRecentUI() {
         const r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
         const box = document.getElementById('recent-box');
         const list = document.getElementById('recent-list');
         if(r.length > 0) {
             box.classList.remove('hidden');
-            list.innerHTML = "";
+            list.innerHTML = `<div style="font-size:0.7rem; color:var(--gold); margin-bottom:5px;">Stanze recenti:</div>`;
             r.forEach(code => {
                 list.innerHTML += `<span class="room-chip" onclick="document.getElementById('camp-code').value='${code}'">${code} 
                     <span class="del-room" onclick="event.stopPropagation(); removeRecent('${code}')">×</span></span>`;
