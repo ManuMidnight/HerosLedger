@@ -35,7 +35,10 @@
         #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; }
         .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
         .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
-        .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+        .avatar-container { position: relative; width: 35px; height: 35px; }
+        .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
+        .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
+        
         #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); }
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
@@ -47,13 +50,18 @@
         .chat-time { font-size: 0.65rem; color: #aaa; margin-left: 5px; font-weight: normal; }
         .hidden { display: none !important; }
         .recent-rooms { margin-top: 15px; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; border: 1px dashed var(--gold); }
-        .room-chip { display: inline-block; background: var(--stone); color: var(--amber); padding: 4px 8px; margin: 2px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+        .room-chip { display: inline-block; background: var(--stone); color: var(--amber); padding: 4px 8px; margin: 4px 2px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; position: relative; }
+        .del-room { position: absolute; top: -8px; right: -5px; background: #b71c1c; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 10px; line-height: 14px; text-align: center; border: 1px solid var(--gold); }
+        
+        /* Nuovi stili */
+        .cond-badge { font-size: 0.6rem; background: #b71c1c; color: white; padding: 1px 4px; border-radius: 3px; margin-right: 2px; display: inline-block; }
+        .lang-select { background: #3e2723; color: var(--amber); border: 1px solid var(--gold); font-size: 0.7rem; padding: 2px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <audio id="silent-wake-lock" loop>
-    <source src="data:audio/wav;base64,UklGRigAAABXQVZRTU9O... (base64 silenziato)" type="audio/wav">
+    <source src="data:audio/wav;base64,UklGRigAAABXQVZRTU9O" type="audio/wav">
 </audio>
 
 <div id="login-ui" class="login-overlay">
@@ -74,6 +82,9 @@
                 <input type="number" id="p-hp" placeholder="PF Max">
                 <input type="number" id="p-ac" placeholder="CA">
             </div>
+            <p style="font-size: 0.8rem; color: var(--amber); margin: 5px 0;">Linguaggi (Comune base):</p>
+            <div id="lang-selection" style="text-align: left; font-size: 0.8rem; height: 80px; overflow-y: scroll; background: #333; padding: 5px;">
+                </div>
         </div>
         <button class="btn-taverna" style="width:100%; margin-top:10px;" onclick="joinGame()">ENTRA</button>
     </div>
@@ -85,7 +96,7 @@
         <span id="display-name"></span> | <strong id="display-code"></strong>
         <button id="btn-settings" class="settings-btn" onclick="openSettings()">⚙️</button>
     </header>
-    <div id="master-panel" class="hidden" style="padding:5px; background: #2c1d1a; display: flex; justify-content: center; gap: 8px;">
+    <div id="master-panel" class="hidden" style="padding:5px; background: #2c1d1a; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
         <button onclick="spawnNPC()" class="btn-taverna">➕ PNG</button>
         <button onclick="clearChat()" class="btn-taverna" style="background:#5d4037; color:white;">🧹 PULISCI</button>
         <button onclick="startCombat()" class="btn-taverna" style="background:red; color:white;">⚔️ INIT</button>
@@ -94,6 +105,7 @@
     <div id="party-bar"></div>
     <div id="chat-flow"></div>
     <div class="input-area">
+        <select id="current-lang" class="lang-select"></select>
         <div id="master-only-ui" class="hidden">
             <select id="msg-recipient" onchange="updateWhisperUI(this.value)" style="color:var(--amber); font-weight:bold; border-bottom: 1px solid var(--gold); margin-bottom:5px; width:100%;">
                 <option value="ALL">Invia a: TUTTI</option>
@@ -136,14 +148,39 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", hp: 10, ac: 10, info: "" };
+    let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", hp: 10, hpMax: 10, ac: 10, info: "", langs: ["Comune"] };
     let firstLoad = true;
 
-    // Riconnessione automatica quando l'app torna visibile (Background persistence)
+    const ALL_LANGS = ["Comune", "Elfico", "Gigante", "Gnomesco", "Goblin", "Halfling", "Nanico", "Orchesco", "Abissale", "Celestiale", "Draconico", "Infernale", "Silvano", "Sottocomune"];
+    const CONDITIONS = ["Accecato", "Affascinato", "Afferrato", "Assordato", "Avvelenato", "Incapacitato", "Invisibile", "Paralizzato", "Pietrificato", "Prono", "Spaventato", "Stordito", "Trattenuto", "Indebolito"];
+
+    const DICTIONARY = {
+        "Orchesco": ["Grush", "nik", "terk", "ah", "nar", "bor", "zug"],
+        "Elfico": ["Elia", "val", "shannar", "mora", "lyth", "ae"],
+        "Nanico": ["Khazad", "dum", "baruk", "ai", "menu", "rok"],
+        "Draconico": ["Vith", "dur", "darastrix", "ignis", "irlyth"],
+        "Abissale": ["Gh’ul", "nak", "kazz", "shur", "t’ghul"],
+        "Infernale": ["Xas", "vile", "mor", "druk", "zehl"],
+        "Gigante": ["Thrym", "jotun", "haug", "stolt", "fisk"],
+        "Gnomesco": ["Boddynock", "glitter", "zook", "turen", "wrenn"],
+        "Goblin": ["Riz", "gark", "snut", "kol", "vark", "titch"],
+        "Halfling": ["Meri", "pippin", "leaf", "tea", "hill", "burr"],
+        "Celestiale": ["Aureos", "lux", "divin", "seraph", "ethereal"],
+        "Silvano": ["Faen", "leaf", "moss", "glade", "whisper", "dew"],
+        "Sottocomune": ["Zar", "drow", "under", "dark", "deep", "void"]
+    };
+
+    function translateText(text, lang) {
+        if (lang === "Comune" || !DICTIONARY[lang]) return text;
+        const words = text.split(" ");
+        return words.map(w => {
+            const dict = DICTIONARY[lang] || ["*mumble*"];
+            return dict[Math.floor(Math.random() * dict.length)] + (w.length > 4 ? "'" + dict[0] : "");
+        }).join(" ") + "?";
+    }
+
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'visible') {
-            db.goOnline();
-        }
+        if (document.visibilityState === 'visible') db.goOnline();
     });
 
     function playFantasyTone() {
@@ -165,6 +202,11 @@
     }
 
     window.onload = () => {
+        const langDiv = document.getElementById('lang-selection');
+        ALL_LANGS.forEach(l => {
+            const checked = l === "Comune" ? "checked disabled" : "";
+            langDiv.innerHTML += `<label style="display:block"><input type="checkbox" class="lang-check" value="${l}" ${checked}> ${l}</label>`;
+        });
         loadVault();
         const lastSession = localStorage.getItem('taverna_session');
         if(lastSession) {
@@ -172,7 +214,7 @@
             document.getElementById('user-name').value = data.name;
             document.getElementById('camp-code').value = data.code;
             document.getElementById('user-role').value = data.role;
-            me.photo = data.photo; me.hp = data.hp || 10; me.ac = data.ac || 10; me.info = data.info || "";
+            me.photo = data.photo; me.hp = data.hp || 10; me.hpMax = data.hpMax || 10; me.ac = data.ac || 10; me.info = data.info || ""; me.langs = data.langs || ["Comune"];
             joinGame(true);
         }
         updateRecentUI();
@@ -186,14 +228,11 @@
         vault.forEach(pg => {
             const card = document.createElement('div');
             card.className = 'vault-card';
-            card.innerHTML = `
-                <div class="del-vault" onclick="removeFromVault(event, '${pg.name}')">×</div>
-                <img src="${pg.photo}"><div>${pg.name}</div>
-            `;
+            card.innerHTML = `<div class="del-vault" onclick="removeFromVault(event, '${pg.name}')">×</div><img src="${pg.photo}"><div>${pg.name}</div>`;
             card.onclick = () => {
                 document.getElementById('user-name').value = pg.name;
                 document.getElementById('p-race-class').value = pg.info;
-                document.getElementById('p-hp').value = pg.hp;
+                document.getElementById('p-hp').value = pg.hpMax;
                 document.getElementById('p-ac').value = pg.ac;
                 me.photo = pg.photo;
             };
@@ -217,7 +256,7 @@
     }
 
     function openSettings() {
-        document.getElementById('set-hp').value = me.hp;
+        document.getElementById('set-hp').value = me.hpMax;
         document.getElementById('set-ac').value = me.ac;
         document.getElementById('modal-settings').style.display = 'flex';
     }
@@ -225,29 +264,40 @@
     function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
 
     function saveSettings() {
-        me.hp = document.getElementById('set-hp').value;
+        me.hpMax = document.getElementById('set-hp').value;
         me.ac = document.getElementById('set-ac').value;
-        campaignRef.child('players').child(me.name).update({ hpMax: me.hp, ac: me.ac });
+        campaignRef.child('players').child(me.name).update({ hpMax: me.hpMax, ac: me.ac });
         const s = JSON.parse(localStorage.getItem('taverna_session'));
-        s.hp = me.hp; s.ac = me.ac; localStorage.setItem('taverna_session', JSON.stringify(s));
-        saveToVault({name: me.name, photo: me.photo, info: me.info, hp: me.hp, ac: me.ac});
+        s.hpMax = me.hpMax; s.ac = me.ac; localStorage.setItem('taverna_session', JSON.stringify(s));
+        saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
         closeSettings();
     }
 
     function updateRecentUI() {
         const recent = JSON.parse(localStorage.getItem('taverna_recent') || "[]");
+        const box = document.getElementById('recent-box');
         if(recent.length > 0) {
-            document.getElementById('recent-box').classList.remove('hidden');
+            box.classList.remove('hidden');
             const list = document.getElementById('recent-list');
             list.innerHTML = "";
             recent.forEach(code => {
                 const span = document.createElement('span');
                 span.className = 'room-chip';
-                span.innerText = code;
+                span.innerHTML = `<div class="del-room" onclick="removeRecentRoom(event, '${code}')">×</div>${code}`;
                 span.onclick = () => { document.getElementById('camp-code').value = code; };
                 list.appendChild(span);
             });
+        } else {
+            box.classList.add('hidden');
         }
+    }
+
+    function removeRecentRoom(event, code) {
+        event.stopPropagation();
+        let recent = JSON.parse(localStorage.getItem('taverna_recent') || "[]");
+        recent = recent.filter(r => r !== code);
+        localStorage.setItem('taverna_recent', JSON.stringify(recent));
+        updateRecentUI();
     }
 
     function exitTavern() { localStorage.removeItem('taverna_session'); location.reload(); }
@@ -259,31 +309,43 @@
         me.role = document.getElementById('user-role').value;
         if(!me.name || !me.code) return alert("Dati incompleti!");
 
-        // Attiva audio silenziato per Wake Lock al login
         document.getElementById('silent-wake-lock').play().catch(()=>{});
 
         if(!isAuto) {
             me.info = document.getElementById('p-race-class').value;
-            me.hp = document.getElementById('p-hp').value || 10;
+            me.hpMax = document.getElementById('p-hp').value || 10;
+            me.hp = me.hpMax;
             me.ac = document.getElementById('p-ac').value || 10;
+            me.langs = Array.from(document.querySelectorAll('.lang-check:checked')).map(c => c.value);
             const f = document.getElementById('user-photo').files[0];
             if(f) me.photo = await compressImg(f);
-            saveToVault({name: me.name, photo: me.photo, info: me.info, hp: me.hp, ac: me.ac});
+            saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
         }
-        localStorage.setItem('taverna_session', JSON.stringify({name: me.name, code: me.code, role: me.role, photo: me.photo, hp: me.hp, ac: me.ac, info: me.info}));
+
+        if(me.role === 'master') {
+            me.langs = [...ALL_LANGS];
+        }
+
+        const lSelect = document.getElementById('current-lang');
+        lSelect.innerHTML = "";
+        me.langs.forEach(l => lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`);
+
+        localStorage.setItem('taverna_session', JSON.stringify({name: me.name, code: me.code, role: me.role, photo: me.photo, hp: me.hp, hpMax: me.hpMax, ac: me.ac, info: me.info, langs: me.langs}));
         let recent = JSON.parse(localStorage.getItem('taverna_recent') || "[]");
         if(!recent.includes(me.code)) { recent.unshift(me.code); localStorage.setItem('taverna_recent', JSON.stringify(recent.slice(0, 5))); }
+        
         document.getElementById('login-ui').style.display = 'none';
         document.getElementById('game-ui').style.display = 'flex';
         document.getElementById('display-name').innerText = me.name;
         document.getElementById('display-code').innerText = me.code;
+        
         if(me.role === 'master') document.getElementById('btn-settings').classList.add('hidden');
         campaignRef = db.ref('campaigns/'+me.code);
         if(me.role === 'master') {
             document.getElementById('master-panel').classList.remove('hidden');
             document.getElementById('master-only-ui').classList.remove('hidden');
         } else {
-            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', info: me.info, hpMax: me.hp, ac: me.ac, init: 0 });
+            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', info: me.info, hp: me.hp, hpMax: me.hpMax, ac: me.ac, init: 0, langs: me.langs, cond: "" });
         }
         setupSync();
     }
@@ -297,18 +359,32 @@
             const savedSel = sel ? sel.value : 'ALL';
             if(sel) sel.innerHTML = '<option value="ALL">Invia a: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>';
             if(multi) multi.innerHTML = "";
+            
             Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
-                let isNPC = p.type === 'NPC';
-                if(me.role === 'master' && !isNPC && p.name !== me.name) {
+                if(me.role === 'master' && p.type !== 'NPC' && p.name !== me.name) {
                     sel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
                     multi.innerHTML += `<label class="check-item"><input type="checkbox" class="whisper-check" value="${p.name}"> ${p.name}</label>`;
                 }
-                let stats = !isNPC ? `<br><small style="color:green;">${p.info || ''} | ${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small>PNG</small>`;
+                
+                const ratio = p.hp / p.hpMax;
+                let filter = `grayscale(${(1-ratio)*100}%) sepia(1) saturate(5) hue-rotate(-50deg) opacity(${0.5 + (1-ratio)*0.5})`;
+                if (p.hp <= 0) filter = "grayscale(100%) brightness(0.5)";
+                const skull = p.hp <= 0 ? "💀" : "";
+                
+                let condHtml = "";
+                if(p.cond) p.cond.split(",").forEach(c => condHtml += `<span class="cond-badge">${c}</span>`);
+
+                let stats = `<br><small style="color:green; cursor:pointer" onclick="${me.role==='master'?`managePG('${p.name}', ${p.hp}, ${p.hpMax})`:''}">
+                             ${p.info || ''} | ${p.hp}/${p.hpMax}PF | CA:${p.ac}</small>`;
                 if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
-                bar.innerHTML += `<div class="pg-tag ${isNPC?'npc-tag':''}">
+                
+                bar.innerHTML += `<div class="pg-tag ${p.type==='NPC'?'npc-tag':''}">
                     ${(me.role==='master')?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
-                    <img src="${p.photo}" class="avatar-circle">
-                    <div><strong>${p.name}</strong>${stats}</div>
+                    <div class="avatar-container">
+                        <img src="${p.photo}" class="avatar-circle" style="filter: ${filter}">
+                        <div class="hp-overlay" style="background: rgba(255,0,0,${(1-ratio)*0.4})"></div>
+                    </div>
+                    <div><strong>${skull}${p.name}</strong>${stats}<br>${condHtml}</div>
                 </div>`;
             });
             if(sel) sel.value = savedSel;
@@ -316,31 +392,55 @@
 
         campaignRef.child('messages').limitToLast(40).on('child_added', snap => {
             const m = snap.val();
+            const knowsLang = me.langs && me.langs.includes(m.lang);
+            const displayMsg = knowsLang ? m.text : translateText(m.text, m.lang);
+            
             const isForMe = (m.to === 'ALL' || m.to === me.name || m.sender === me.name || (Array.isArray(m.to) && m.to.includes(me.name)));
             if(isForMe) {
                 if (!firstLoad && m.sender !== me.name) {
                     playFantasyTone(); 
-                    if (Notification.permission === "granted") {
-                        new Notification(`Taverna - ${m.sender}`, { body: m.text, icon: m.photo });
-                    }
+                    if (Notification.permission === "granted") new Notification(`Taverna - ${m.sender}`, { body: displayMsg, icon: m.photo });
                 }
                 const f = document.getElementById('chat-flow');
                 const d = document.createElement('div'); d.className = 'chat-bubble';
                 const isWhisper = m.to !== 'ALL';
                 const tag = isWhisper ? `<span style="color:#9c27b0;font-size:0.7rem;"> [sussurro]</span>` : '';
+                const lTag = m.lang !== "Comune" ? `<span style="color:var(--gold);font-size:0.7rem;"> [${m.lang}]</span>` : '';
                 const date = m.time ? new Date(m.time) : new Date();
                 const timeStr = date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
                 const whisperStyle = isWhisper ? 'font-style:italic; border-left: 2px solid #9c27b0; background: rgba(156, 39, 176, 0.1);' : '';
-                d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="${whisperStyle}"><strong>${m.sender}${tag} <span class="chat-time">${timeStr}</span></strong><br>${m.text}</div>`;
+                
+                d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="${whisperStyle}"><strong>${m.sender}${tag}${lTag} <span class="chat-time">${timeStr}</span></strong><br>${displayMsg}</div>`;
                 f.appendChild(d); f.scrollTop = f.scrollHeight;
             }
         });
         setTimeout(() => { firstLoad = false; }, 2000);
     }
 
+    function managePG(name, cur, max) {
+        const op = prompt("(1) Danni, (2) Guarigione, (3) Condizioni");
+        if (op === "1") {
+            const d = parseInt(prompt("Danni ricevuti?"));
+            if (isNaN(d)) return;
+            const newHp = Math.max(0, cur - d);
+            campaignRef.child('players').child(name).update({ hp: newHp });
+            campaignRef.child('messages').push({ sender: "SISTEMA", photo: "https://cdn-icons-png.flaticon.com/512/167/167502.png", text: `${name} Riceve ${d} danni, PF: ${newHp}/${max}`, lang: "Comune", to: "ALL", time: Date.now() });
+        } else if (op === "2") {
+            const h = parseInt(prompt("PF recuperati?"));
+            if (isNaN(h)) return;
+            const newHp = Math.min(max, cur + h);
+            campaignRef.child('players').child(name).update({ hp: newHp });
+            campaignRef.child('messages').push({ sender: "SISTEMA", photo: "https://cdn-icons-png.flaticon.com/512/167/167502.png", text: `${name} Recupera ${h} PF, PF: ${newHp}/${max}`, lang: "Comune", to: "ALL", time: Date.now() });
+        } else if (op === "3") {
+            const c = prompt("Inserisci condizioni (es: Prono, Avvelenato) o lascia vuoto per pulire:");
+            campaignRef.child('players').child(name).update({ cond: c });
+        }
+    }
+
     function sendMsg() {
         const i = document.getElementById('msg-input');
         if(!i.value.trim()) return;
+        const lang = document.getElementById('current-lang').value;
         let to = 'ALL';
         if(me.role === 'master') {
             const selVal = document.getElementById('msg-recipient').value;
@@ -349,12 +449,12 @@
                 if(to.length === 0) return alert("Seleziona qualcuno!");
             } else { to = selVal; }
         }
-        campaignRef.child('messages').push({ sender: me.name, photo: me.photo, text: i.value, to: to, time: Date.now() });
+        campaignRef.child('messages').push({ sender: me.name, photo: me.photo, text: i.value, to: to, lang: lang, time: Date.now() });
         i.value = "";
     }
 
     function clearChat() {
-        if(confirm("Vuoi svuotare tutta la cronologia messaggi della stanza?")) {
+        if(confirm("Svuotare cronologia?")) {
             campaignRef.child('messages').remove();
             document.getElementById('chat-flow').innerHTML = "";
         }
@@ -362,7 +462,8 @@
 
     async function spawnNPC() {
         const n = prompt("Nome PNG:"); if(!n) return;
-        campaignRef.child('players').child(n).set({ name: n, photo: "https://cdn-icons-png.flaticon.com/512/64/64572.png", type: 'NPC', init: 0 });
+        const hp = parseInt(prompt("PF PNG:", "10"));
+        campaignRef.child('players').child(n).set({ name: n, photo: "https://cdn-icons-png.flaticon.com/512/64/64572.png", type: 'NPC', hp: hp, hpMax: hp, init: 0, cond: "" });
     }
 
     function startCombat() {
