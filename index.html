@@ -14,62 +14,89 @@
     <style>
         :root { --wood: #3e2723; --stone: #424242; --amber: #ffca28; --gold: #b8860b; --parchment: #f5e1b6; }
         body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .login-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; }
-        .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; }
-        input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; }
+        .login-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; overflow-y: auto; }
+        .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
+        input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
         #game-ui { display: none; flex-direction: column; height: 100vh; }
-        header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); }
+        header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; }
+        .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+        
+        .vault-container { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid #444; }
+        .vault-card { flex-shrink: 0; width: 60px; text-align: center; cursor: pointer; position: relative; }
+        .vault-card img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold); object-fit: cover; }
+        .vault-card div { font-size: 0.6rem; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .del-vault { position: absolute; top: -5px; right: 5px; background: #b71c1c; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 12px; line-height: 16px; text-align: center; border: 1px solid var(--gold); z-index: 5; }
+
+        .settings-btn { position: absolute; right: 10px; top: 8px; background: none; border: none; color: var(--amber); font-size: 1.2rem; cursor: pointer; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
+        .modal-content { background: #212121; padding: 20px; border-radius: 8px; border: 2px solid var(--gold); width: 280px; }
+        
         #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; }
-        .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 130px; display: flex; align-items: center; gap: 8px; position: relative; }
+        .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
         .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
         #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); }
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
-        .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; }
+        .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
         .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); }
         .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; }
         #multi-selector { background: #5d4037; padding: 10px; border: 2px solid var(--gold); margin-bottom: 8px; border-radius: 5px; display: none; max-height: 120px; overflow-y: auto; }
         .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; color: white; font-size: 0.9rem; cursor: pointer; }
-        .check-item input { width: 20px; height: 20px; margin: 0; }
         .chat-time { font-size: 0.65rem; color: #aaa; margin-left: 5px; font-weight: normal; }
         .hidden { display: none !important; }
+        .recent-rooms { margin-top: 15px; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; border: 1px dashed var(--gold); }
+        .room-chip { display: inline-block; background: var(--stone); color: var(--amber); padding: 4px 8px; margin: 2px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
+<audio id="silent-wake-lock" loop>
+    <source src="data:audio/wav;base64,UklGRigAAABXQVZRTU9O... (base64 silenziato)" type="audio/wav">
+</audio>
+
 <div id="login-ui" class="login-overlay">
     <div class="scroll-box">
         <h2 style="color:var(--amber);">🍷 Registro</h2>
+        <div id="pg-vault" class="vault-container"></div>
         <input type="text" id="user-name" placeholder="Nome Personaggio">
         <input type="text" id="camp-code" placeholder="Codice Stanza">
+        <div id="recent-box" class="recent-rooms hidden"><div id="recent-list"></div></div>
         <input type="file" id="user-photo" accept="image/*">
         <select id="user-role" onchange="document.getElementById('p-extra').classList.toggle('hidden', this.value==='master')">
             <option value="player">Giocatore</option>
             <option value="master">Dungeon Master</option>
         </select>
         <div id="p-extra">
-            <input type="number" id="p-hp" placeholder="PF Massimi">
-            <input type="number" id="p-ac" placeholder="Classe Armatura (CA)">
+            <input type="text" id="p-race-class" placeholder="Razza e Classe">
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="p-hp" placeholder="PF Max">
+                <input type="number" id="p-ac" placeholder="CA">
+            </div>
         </div>
         <button class="btn-taverna" style="width:100%; margin-top:10px;" onclick="joinGame()">ENTRA</button>
     </div>
 </div>
 
 <div id="game-ui">
-    <header><span id="display-name"></span> | Stanza: <strong id="display-code"></strong></header>
+    <header>
+        <button class="exit-btn" onclick="exitTavern()">ESCI</button>
+        <span id="display-name"></span> | <strong id="display-code"></strong>
+        <button id="btn-settings" class="settings-btn" onclick="openSettings()">⚙️</button>
+    </header>
     <div id="master-panel" class="hidden" style="padding:5px; background: #2c1d1a; display: flex; justify-content: center; gap: 8px;">
         <button onclick="spawnNPC()" class="btn-taverna">➕ PNG</button>
-        <button onclick="startCombat()" class="btn-taverna" style="background:red; color:white;">⚔️ INIZIATIVA</button>
+        <button onclick="startCombat()" class="btn-taverna" style="background:red; color:white;">⚔️ INIT</button>
         <button onclick="endCombat()" class="btn-taverna">🏳️ FINE</button>
     </div>
     <div id="party-bar"></div>
     <div id="chat-flow"></div>
     <div class="input-area">
         <div id="master-only-ui" class="hidden">
-            <select id="msg-recipient" onchange="updateWhisperUI(this.value)" style="color:var(--amber); font-weight:bold; border-bottom: 1px solid var(--gold); margin-bottom:5px;">
+            <select id="msg-recipient" onchange="updateWhisperUI(this.value)" style="color:var(--amber); font-weight:bold; border-bottom: 1px solid var(--gold); margin-bottom:5px; width:100%;">
                 <option value="ALL">Invia a: TUTTI</option>
-                <option value="MULTI">SUSSURRO MULTIPLO (Seleziona sotto)</option>
+                <option value="MULTI">SUSSURRO MULTIPLO</option>
             </select>
             <div id="multi-selector"></div>
         </div>
@@ -77,6 +104,18 @@
             <input type="text" id="msg-input" placeholder="Scrivi qui..." autocomplete="off">
             <button type="submit" class="btn-taverna">OK</button>
         </form>
+    </div>
+</div>
+
+<div id="modal-settings" class="modal">
+    <div class="modal-content">
+        <h3 style="color:var(--amber); margin-top:0;">Aggiorna Statistiche</h3>
+        <input type="number" id="set-hp" placeholder="Nuovi PF Max">
+        <input type="number" id="set-ac" placeholder="Nuova CA">
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <button class="btn-taverna" style="flex:1" onclick="saveSettings()">SALVA</button>
+            <button class="btn-taverna" style="flex:1; background:#b71c1c; color:white;" onclick="closeSettings()">ANNULLA</button>
+        </div>
     </div>
 </div>
 
@@ -96,27 +135,154 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png" };
+    let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", hp: 10, ac: 10, info: "" };
+    let firstLoad = true;
 
+    // Riconnessione automatica quando l'app torna visibile (Background persistence)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'visible') {
+            db.goOnline();
+        }
+    });
+
+    function playFantasyTone() {
+        if (document.visibilityState === 'visible') return;
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1); 
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) { console.log("Audio non supportato"); }
+    }
+
+    window.onload = () => {
+        loadVault();
+        const lastSession = localStorage.getItem('taverna_session');
+        if(lastSession) {
+            const data = JSON.parse(lastSession);
+            document.getElementById('user-name').value = data.name;
+            document.getElementById('camp-code').value = data.code;
+            document.getElementById('user-role').value = data.role;
+            me.photo = data.photo; me.hp = data.hp || 10; me.ac = data.ac || 10; me.info = data.info || "";
+            joinGame(true);
+        }
+        updateRecentUI();
+        if ("Notification" in window) Notification.requestPermission();
+    };
+
+    function loadVault() {
+        const vault = JSON.parse(localStorage.getItem('taverna_vault') || "[]");
+        const container = document.getElementById('pg-vault');
+        container.innerHTML = "";
+        vault.forEach(pg => {
+            const card = document.createElement('div');
+            card.className = 'vault-card';
+            card.innerHTML = `
+                <div class="del-vault" onclick="removeFromVault(event, '${pg.name}')">×</div>
+                <img src="${pg.photo}"><div>${pg.name}</div>
+            `;
+            card.onclick = () => {
+                document.getElementById('user-name').value = pg.name;
+                document.getElementById('p-race-class').value = pg.info;
+                document.getElementById('p-hp').value = pg.hp;
+                document.getElementById('p-ac').value = pg.ac;
+                me.photo = pg.photo;
+            };
+            container.appendChild(card);
+        });
+    }
+
+    function removeFromVault(event, name) {
+        event.stopPropagation();
+        let vault = JSON.parse(localStorage.getItem('taverna_vault') || "[]");
+        vault = vault.filter(p => p.name !== name);
+        localStorage.setItem('taverna_vault', JSON.stringify(vault));
+        loadVault();
+    }
+
+    function saveToVault(pg) {
+        let vault = JSON.parse(localStorage.getItem('taverna_vault') || "[]");
+        vault = vault.filter(p => p.name !== pg.name);
+        vault.unshift(pg);
+        localStorage.setItem('taverna_vault', JSON.stringify(vault.slice(0, 5)));
+    }
+
+    function openSettings() {
+        document.getElementById('set-hp').value = me.hp;
+        document.getElementById('set-ac').value = me.ac;
+        document.getElementById('modal-settings').style.display = 'flex';
+    }
+
+    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
+
+    function saveSettings() {
+        me.hp = document.getElementById('set-hp').value;
+        me.ac = document.getElementById('set-ac').value;
+        campaignRef.child('players').child(me.name).update({ hpMax: me.hp, ac: me.ac });
+        const s = JSON.parse(localStorage.getItem('taverna_session'));
+        s.hp = me.hp; s.ac = me.ac; localStorage.setItem('taverna_session', JSON.stringify(s));
+        saveToVault({name: me.name, photo: me.photo, info: me.info, hp: me.hp, ac: me.ac});
+        closeSettings();
+    }
+
+    function updateRecentUI() {
+        const recent = JSON.parse(localStorage.getItem('taverna_recent') || "[]");
+        if(recent.length > 0) {
+            document.getElementById('recent-box').classList.remove('hidden');
+            const list = document.getElementById('recent-list');
+            list.innerHTML = "";
+            recent.forEach(code => {
+                const span = document.createElement('span');
+                span.className = 'room-chip';
+                span.innerText = code;
+                span.onclick = () => { document.getElementById('camp-code').value = code; };
+                list.appendChild(span);
+            });
+        }
+    }
+
+    function exitTavern() { localStorage.removeItem('taverna_session'); location.reload(); }
     function updateWhisperUI(val) { document.getElementById('multi-selector').style.display = (val === 'MULTI') ? 'block' : 'none'; }
 
-    async function joinGame() {
+    async function joinGame(isAuto = false) {
         me.name = document.getElementById('user-name').value.trim();
         me.code = document.getElementById('camp-code').value.toUpperCase().trim();
         me.role = document.getElementById('user-role').value;
-        if(!me.name || !me.code) return alert("Mancano dati!");
-        const f = document.getElementById('user-photo').files[0];
-        if(f) me.photo = await compressImg(f);
+        if(!me.name || !me.code) return alert("Dati incompleti!");
+
+        // Attiva audio silenziato per Wake Lock al login
+        document.getElementById('silent-wake-lock').play().catch(()=>{});
+
+        if(!isAuto) {
+            me.info = document.getElementById('p-race-class').value;
+            me.hp = document.getElementById('p-hp').value || 10;
+            me.ac = document.getElementById('p-ac').value || 10;
+            const f = document.getElementById('user-photo').files[0];
+            if(f) me.photo = await compressImg(f);
+            saveToVault({name: me.name, photo: me.photo, info: me.info, hp: me.hp, ac: me.ac});
+        }
+        localStorage.setItem('taverna_session', JSON.stringify({name: me.name, code: me.code, role: me.role, photo: me.photo, hp: me.hp, ac: me.ac, info: me.info}));
+        let recent = JSON.parse(localStorage.getItem('taverna_recent') || "[]");
+        if(!recent.includes(me.code)) { recent.unshift(me.code); localStorage.setItem('taverna_recent', JSON.stringify(recent.slice(0, 5))); }
         document.getElementById('login-ui').style.display = 'none';
         document.getElementById('game-ui').style.display = 'flex';
         document.getElementById('display-name').innerText = me.name;
         document.getElementById('display-code').innerText = me.code;
+        if(me.role === 'master') document.getElementById('btn-settings').classList.add('hidden');
         campaignRef = db.ref('campaigns/'+me.code);
         if(me.role === 'master') {
             document.getElementById('master-panel').classList.remove('hidden');
             document.getElementById('master-only-ui').classList.remove('hidden');
         } else {
-            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', hpMax: document.getElementById('p-hp').value || 10, ac: document.getElementById('p-ac').value || 10, init: 0 });
+            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', info: me.info, hpMax: me.hp, ac: me.ac, init: 0 });
         }
         setupSync();
     }
@@ -128,15 +294,15 @@
             const multi = document.getElementById('multi-selector');
             const ps = snap.val() || {};
             const savedSel = sel ? sel.value : 'ALL';
-            if(sel) sel.innerHTML = '<option value="ALL">Invia a: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO (Seleziona sotto)</option>';
+            if(sel) sel.innerHTML = '<option value="ALL">Invia a: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>';
             if(multi) multi.innerHTML = "";
             Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
                 let isNPC = p.type === 'NPC';
                 if(me.role === 'master' && !isNPC && p.name !== me.name) {
-                    sel.innerHTML += `<option value="${p.name}">Sussurra solo a: ${p.name}</option>`;
+                    sel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
                     multi.innerHTML += `<label class="check-item"><input type="checkbox" class="whisper-check" value="${p.name}"> ${p.name}</label>`;
                 }
-                let stats = !isNPC ? `<br><small style="color:green;">${p.hpMax} PF | CA:${p.ac}</small>` : `<br><small>PNG</small>`;
+                let stats = !isNPC ? `<br><small style="color:green;">${p.info || ''} | ${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small>PNG</small>`;
                 if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
                 bar.innerHTML += `<div class="pg-tag ${isNPC?'npc-tag':''}">
                     ${(me.role==='master'&&isNPC)?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
@@ -147,19 +313,28 @@
             if(sel) sel.value = savedSel;
         });
 
-        campaignRef.child('messages').limitToLast(30).on('child_added', snap => {
+        campaignRef.child('messages').limitToLast(40).on('child_added', snap => {
             const m = snap.val();
             const isForMe = (m.to === 'ALL' || m.to === me.name || m.sender === me.name || (Array.isArray(m.to) && m.to.includes(me.name)));
             if(isForMe) {
+                if (!firstLoad && m.sender !== me.name) {
+                    playFantasyTone(); 
+                    if (Notification.permission === "granted") {
+                        new Notification(`Taverna - ${m.sender}`, { body: m.text, icon: m.photo });
+                    }
+                }
                 const f = document.getElementById('chat-flow');
                 const d = document.createElement('div'); d.className = 'chat-bubble';
-                const tag = (m.to !== 'ALL') ? `<span style="color:red;font-size:0.7rem;"> [sussurro]</span>` : '';
+                const isWhisper = m.to !== 'ALL';
+                const tag = isWhisper ? `<span style="color:red;font-size:0.7rem;"> [sussurro]</span>` : '';
                 const date = m.time ? new Date(m.time) : new Date();
                 const timeStr = date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
-                d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="${m.to !== 'ALL' ? 'font-style:italic;' : ''}"><strong>${m.sender}${tag} <span class="chat-time">${timeStr}</span></strong><br>${m.text}</div>`;
+                const whisperStyle = isWhisper ? 'font-style:italic; border-left: 2px solid var(--gold); background: rgba(184,134,11,0.05);' : '';
+                d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="${whisperStyle}"><strong>${m.sender}${tag} <span class="chat-time">${timeStr}</span></strong><br>${m.text}</div>`;
                 f.appendChild(d); f.scrollTop = f.scrollHeight;
             }
         });
+        setTimeout(() => { firstLoad = false; }, 2000);
     }
 
     function sendMsg() {
@@ -170,7 +345,7 @@
             const selVal = document.getElementById('msg-recipient').value;
             if(selVal === 'MULTI') {
                 to = Array.from(document.querySelectorAll('.whisper-check:checked')).map(c => c.value);
-                if(to.length === 0) return alert("Seleziona almeno un destinatario!");
+                if(to.length === 0) return alert("Seleziona qualcuno!");
             } else { to = selVal; }
         }
         campaignRef.child('messages').push({ sender: me.name, photo: me.photo, text: i.value, to: to, time: Date.now() });
