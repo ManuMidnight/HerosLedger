@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>D&amp;D Taverna - Hero's Ledger</title>
+    <title>D&D Taverna - Hero's Ledger</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="D&amp;D Taverna">
+    <meta name="apple-mobile-web-app-title" content="D&D Taverna">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/149/149071.png">
     <meta name="theme-color" content="#3e2723">
 
     <style>
         :root { --wood: #3e2723; --stone: #424242; --amber: #ffca28; --gold: #b8860b; --parchment: #f5e1b6; }
-        body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior-y: contain; }
+        /* FIX: Impedisce il pull-to-refresh e blocca lo scroll indesiderato */
+        body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior-y: none; }
+        
         .login-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; overflow-y: auto; }
         .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
         input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
@@ -43,14 +45,20 @@
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
         .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
         
-        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior-y: contain; }
+        /* FIX: Scroll fluido e senza ricarica pagina */
+        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+        
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
         .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
         .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); }
         .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; }
         #multi-selector { background: #5d4037; padding: 10px; border: 2px solid var(--gold); margin-bottom: 8px; border-radius: 5px; display: none; max-height: 120px; overflow-y: auto; }
-        .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; color: white; font-size: 0.9rem; cursor: pointer; }
+        
+        /* FIX: Allineamento checkbox lingue */
+        .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; color: white; font-size: 0.9rem; cursor: pointer; text-align: left; }
+        .check-item input { width: auto; margin: 0; cursor: pointer; }
+
         .chat-time { font-size: 0.65rem; color: #aaa; margin-left: 5px; font-weight: normal; }
         .hidden { display: none !important; }
         .recent-rooms { margin-top: 15px; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; border: 1px dashed var(--gold); }
@@ -93,7 +101,7 @@
                 <input type="number" id="p-ac" placeholder="CA">
             </div>
             <p style="font-size: 0.8rem; color: var(--amber); margin: 5px 0;">Linguaggi:</p>
-            <div id="lang-selection" style="text-align: left; font-size: 0.8rem; height: 80px; overflow-y: scroll; background: #333; padding: 5px;"></div>
+            <div id="lang-selection" style="text-align: left; font-size: 0.8rem; height: 100px; overflow-y: auto; background: #333; padding: 10px; border: 1px solid var(--stone);"></div>
         </div>
         <button class="btn-taverna" style="width:100%; margin-top:10px;" onclick="joinGame()">ENTRA</button>
     </div>
@@ -253,8 +261,9 @@
         const npcLangDiv = document.getElementById('npc-lang-selection');
         ALL_LANGS.forEach(l => {
             const checked = l === "Comune" ? "checked disabled" : "";
-            langDiv.innerHTML += `<label style="display:block"><input type="checkbox" class="lang-check" value="${l}" ${checked}> ${l}</label>`;
-            npcLangDiv.innerHTML += `<label style="display:block"><input type="checkbox" class="npc-lang-check" value="${l}" ${l==="Comune"?"checked":""}> ${l}</label>`;
+            // FIX: Allineamento e stile selezione lingue
+            langDiv.innerHTML += `<label class="check-item"><input type="checkbox" class="lang-check" value="${l}" ${checked}> ${l}</label>`;
+            npcLangDiv.innerHTML += `<label class="check-item"><input type="checkbox" class="npc-lang-check" value="${l}" ${l==="Comune"?"checked":""}> ${l}</label>`;
         });
         
         document.getElementById('npc-photo').onchange = async (e) => {
@@ -263,7 +272,7 @@
 
         loadVault();
         updateRecentUI();
-        
+
         const savedSession = localStorage.getItem('taverna_active_session');
         if(savedSession) {
             const s = JSON.parse(savedSession);
@@ -279,12 +288,20 @@
         const lSelect = document.getElementById('current-lang');
         lSelect.innerHTML = "";
         let availableLangs = [];
-        if (choice === "MASTER") { availableLangs = ALL_LANGS; } 
-        else if (cachedNPCs[choice]) { availableLangs = cachedNPCs[choice].langs || ["Comune"]; }
-        availableLangs.forEach(l => { lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`; });
+        if (choice === "MASTER") {
+            availableLangs = ALL_LANGS;
+        } else if (cachedNPCs[choice]) {
+            availableLangs = cachedNPCs[choice].langs || ["Comune"];
+        }
+        availableLangs.forEach(l => {
+            lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`;
+        });
     }
 
-    function openSpawnModal() { document.getElementById('modal-spawn').style.display = 'flex'; npcTempPhoto = null; }
+    function openSpawnModal() {
+        document.getElementById('modal-spawn').style.display = 'flex';
+        npcTempPhoto = null;
+    }
     function closeSpawnModal() { document.getElementById('modal-spawn').style.display = 'none'; }
 
     async function spawnNPC() {
@@ -295,12 +312,24 @@
         const ac = parseInt(document.getElementById('npc-ac').value) || 10;
         const count = parseInt(document.getElementById('npc-count').value) || 1;
         const langs = Array.from(document.querySelectorAll('.npc-lang-check:checked')).map(c => c.value);
+
         if(!name) return alert("Inserisci un nome!");
+
         let finalPhoto = npcTempPhoto || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
         for(let i=1; i<=count; i++) {
             const finalName = count > 1 ? `${name} ${i}` : name;
             campaignRef.child('players').child(finalName).set({
-                name: finalName, photo: finalPhoto, type: type, info: title, hp: hp, hpMax: hp, ac: ac, init: 0, langs: langs, cond: ""
+                name: finalName,
+                photo: finalPhoto,
+                type: type,
+                info: title,
+                hp: hp,
+                hpMax: hp,
+                ac: ac,
+                init: 0,
+                langs: langs,
+                cond: ""
             });
         }
         closeSpawnModal();
@@ -312,300 +341,311 @@
         Object.values(cachedNPCs).forEach(p => {
             container.innerHTML += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
                 <span style="color:white; flex:1; font-size:0.9rem;">${p.name}</span>
-                <input type="number" class="init-input" data-name="${p.name}" value="${p.init || 0}" style="width:60px; margin:0; padding:5px;">
+                <input type="number" class="init-input" data-name="${p.name}" value="${p.init || 0}" style="width:60px; margin:0;">
             </div>`;
         });
         document.getElementById('modal-init').style.display = 'flex';
     }
 
     function confirmIniziativa() {
-        const inputs = document.querySelectorAll('.init-input');
-        inputs.forEach(inp => {
-            const name = inp.dataset.name;
-            const val = parseInt(inp.value) || 0;
+        document.querySelectorAll('.init-input').forEach(input => {
+            const name = input.getAttribute('data-name');
+            const val = parseInt(input.value) || 0;
             campaignRef.child('players').child(name).update({ init: val });
         });
-        
-        campaignRef.child('messages').push({
-            sender: me.name, senderRole: 'master', photo: me.photo, 
-            text: "⚔️ Inizia il combattimento! ⚔️", lang: "Comune", to: 'ALL', time: Date.now()
-        });
-
         document.getElementById('modal-init').style.display = 'none';
+        campaignRef.child('combat').update({ round: 1 });
     }
 
     function nextRound() {
-        currentRound++;
-        const masterName = me.role === 'master' ? me.name : "Master";
-        campaignRef.child('messages').push({
-            sender: masterName, senderRole: 'master', photo: me.photo, 
-            text: `ROUND ${currentRound}`, lang: "Comune", to: 'ALL', time: Date.now(), isRound: true
-        });
+        campaignRef.child('combat').child('round').transaction(r => (r || 0) + 1);
     }
 
     function endCombat() {
-        currentRound = 0;
-        Object.values(cachedNPCs).forEach(p => { campaignRef.child('players').child(p.name).update({ init: 0 }); });
-        
-        campaignRef.child('messages').push({
-            sender: me.name, senderRole: 'master', photo: me.photo, 
-            text: "🏳️ Il combattimento è finito. 🏳️", lang: "Comune", to: 'ALL', time: Date.now()
-        });
-    }
-
-    function translateText(text, lang) {
-        if (lang === "Comune" || !DICTIONARY[lang]) return text;
-        const words = text.split(" ");
-        return words.map(w => {
-            const dict = DICTIONARY[lang] || ["*mumble*"];
-            return dict[Math.floor(Math.random() * dict.length)] + (w.length > 4 ? "'" + dict[0] : "");
-        }).join(" ") + "?";
-    }
-
-    async function compressImg(file) {
-        return new Promise(res => {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = e => {
-                const img = new Image(); img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas'); const size = 120;
-                    canvas.width = size; canvas.height = size;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, size, size);
-                    res(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            };
-        });
-    }
-
-    async function joinGame(isAuto = false) {
-        if(!isAuto) {
-            me.name = document.getElementById('user-name').value.trim();
-            me.code = document.getElementById('camp-code').value.toUpperCase().trim();
-            me.role = document.getElementById('user-role').value;
-            if(!me.name || !me.code) return alert("Dati incompleti!");
-            
-            me.info = document.getElementById('p-race-class').value;
-            me.hpMax = parseInt(document.getElementById('p-hp').value) || 10;
-            me.hp = me.hpMax;
-            me.ac = document.getElementById('p-ac').value || 10;
-            me.langs = Array.from(document.querySelectorAll('.lang-check:checked')).map(c => c.value);
-            const f = document.getElementById('user-photo').files[0];
-            if(f) me.photo = await compressImg(f);
-            saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
-        }
-        
-        document.getElementById('silent-wake-lock').play().catch(()=>{});
-        saveRecent(me.code);
-        
-        localStorage.setItem('taverna_active_session', JSON.stringify(me));
-
-        if(me.role === 'master') { 
-            me.langs = [...ALL_LANGS]; 
-            document.getElementById('btn-settings').style.display = 'none';
-        }
-        const lSelect = document.getElementById('current-lang');
-        lSelect.innerHTML = "";
-        me.langs.forEach(l => lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`);
-        document.getElementById('login-ui').style.display = 'none';
-        document.getElementById('game-ui').style.display = 'flex';
-        document.getElementById('display-name').innerText = me.name;
-        document.getElementById('display-code').innerText = me.code;
-        campaignRef = db.ref('campaigns/'+me.code);
-        if(me.role === 'master') {
-            document.getElementById('master-panel').classList.remove('hidden');
-            document.getElementById('master-only-ui').classList.remove('hidden');
-        } else {
-            document.getElementById('player-whisper-ui').classList.remove('hidden');
-            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', info: me.info, hp: me.hp, hpMax: me.hpMax, ac: me.ac, init: 0, langs: me.langs, cond: "" });
-        }
-        setupSync();
-    }
-
-    function setupSync() {
-        campaignRef.child('players').on('value', snap => {
-            const bar = document.getElementById('party-bar'); bar.innerHTML = "";
-            const sel = document.getElementById('msg-recipient');
-            const pSel = document.getElementById('player-msg-recipient');
-            const multi = document.getElementById('multi-selector');
-            const senderChoice = document.getElementById('sender-choice');
-            const ps = snap.val() || {};
-            cachedNPCs = ps; 
-            const currentChoice = senderChoice ? senderChoice.value : "MASTER";
-            if(senderChoice) senderChoice.innerHTML = '<option value="MASTER">Parla come: MASTER</option>';
-            if(sel) sel.innerHTML = '<option value="ALL">Destinatario: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>';
-            if(pSel) pSel.innerHTML = '<option value="ALL">A: TUTTI</option>';
-            if(multi) multi.innerHTML = "";
-            Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
-                const characterPhoto = p.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-                if(me.role === 'master' && (p.type === 'NPC' || p.type === 'BOSS')) senderChoice.innerHTML += `<option value="${p.name}">Parla come: ${p.name}</option>`;
-                if(p.name !== me.name) {
-                    if(me.role === 'master' && p.type !== 'NPC' && p.type !== 'BOSS') {
-                        sel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
-                        multi.innerHTML += `<label class="check-item"><input type="checkbox" class="whisper-check" value="${p.name}"> ${p.name}</label>`;
-                    }
-                    if(me.role === 'player' && p.type === 'PC') pSel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
-                }
-                const ratio = p.hp / p.hpMax;
-                let filter = "none";
-                if (p.hp <= 0) filter = "grayscale(100%) brightness(0.5)";
-                const skull = p.hp <= 0 ? "💀" : "";
-                let condHtml = "";
-                if(p.cond) p.cond.split(",").filter(c => c.trim() !== "").forEach(c => condHtml += `<span class="cond-badge">${c}</span>`);
-                
-                let showStats = (p.type === 'PC' || me.role === 'master');
-                let statsAction = (me.role === 'master') ? `onclick="openManagePG('${p.name}')"` : "";
-                let stats = showStats ? `<br><small style="color:green; cursor:pointer" ${statsAction}>
-                             ${p.info || ''} | ${p.hp}/${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small style="color:green">${p.info || ''}</small>`;
-                if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
-                
-                let extraClass = (p.type === 'NPC' ? 'npc-tag' : (p.type === 'BOSS' ? 'npc-tag boss-tag' : ''));
-                
-                bar.innerHTML += `<div class="pg-tag ${extraClass}">
-                    ${(me.role==='master')?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
-                    <div class="avatar-container">
-                        <img src="${characterPhoto}" class="avatar-circle" style="filter: ${filter}">
-                        <div class="hp-overlay" style="background: rgba(255,0,0,${(1-ratio)*0.6})"></div>
-                    </div>
-                    <div><strong>${skull}${p.name}</strong>${stats}<br>${condHtml}</div>
-                </div>`;
+        if(confirm("Terminare il combattimento?")) {
+            campaignRef.child('combat').update({ round: 0 });
+            Object.keys(cachedNPCs).forEach(name => {
+                campaignRef.child('players').child(name).update({ init: 0 });
             });
-            if(senderChoice) senderChoice.value = currentChoice;
-        });
-
-        campaignRef.child('messages').limitToLast(40).on('child_added', snap => {
-            const m = snap.val();
-            const knowsLang = me.langs && me.langs.includes(m.lang);
-            const displayMsg = knowsLang ? m.text : translateText(m.text, m.lang);
-            const isForMe = (me.role === 'master' || m.to === 'ALL' || m.to === me.name || m.sender === me.name || (Array.isArray(m.to) && m.to.includes(me.name)));
-            if(isForMe) {
-                const f = document.getElementById('chat-flow');
-                const d = document.createElement('div'); d.className = 'chat-bubble';
-                const tag = m.to !== 'ALL' && !m.isRound ? `<span style="color:#9c27b0;font-size:0.7rem;"> [sussurro]</span>` : '';
-                const lTag = m.lang !== "Comune" ? `<span style="color:var(--gold);font-size:0.7rem;"> [${m.lang}]</span>` : '';
-                const timeStr = new Date(m.time).getHours().toString().padStart(2, '0') + ":" + new Date(m.time).getMinutes().toString().padStart(2, '0');
-                let bgColor = "rgba(255,255,255,0.05)";
-                let textColor = 'inherit';
-                if(m.isRound) { bgColor = "var(--gold)"; textColor = "black"; }
-                else if(m.type === 'damage') textColor = "#ff4444";
-                else if(m.type === 'heal') textColor = "#4444ff";
-                else if(m.type === 'cond') textColor = "#44ff44";
-                else if(m.senderRole === 'master') textColor = "#ffca28";
-                else if(m.senderRole === 'npc') textColor = "#ef9a9a";
-                d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="background:${bgColor}; color:${textColor}"><strong>${m.sender}${tag}${lTag} <span class="chat-time">${timeStr}</span></strong><br>${displayMsg}</div>`;
-                f.appendChild(d); f.scrollTop = f.scrollHeight;
-            }
-        });
+        }
     }
 
-    function openManagePG(name) {
-        if(me.role !== 'master') return; 
-        currentTargetPG = name;
-        document.getElementById('manage-title').innerText = "Gestione " + name;
-        document.getElementById('modal-manage').style.display = 'flex';
-        showManageAction('MAIN');
-    }
-
-    function showManageAction(action) {
-        document.getElementById('manage-main-menu').classList.add('hidden');
+    function managePG(name) {
+        if(me.role !== 'master') return;
+        currentTargetPG = cachedNPCs[name];
+        document.getElementById('manage-title').innerText = "Gestisci " + name;
+        document.getElementById('manage-main-menu').classList.remove('hidden');
         document.getElementById('manage-action-input').classList.add('hidden');
         document.getElementById('manage-conditions-list').classList.add('hidden');
-        if(action === 'MAIN') { document.getElementById('manage-main-menu').classList.remove('hidden'); }
-        else if(action === 'CONDIZIONI') {
+        document.getElementById('modal-manage').style.display = 'flex';
+    }
+
+    let currentActionType = "";
+    function showManageAction(type) {
+        currentActionType = type;
+        document.getElementById('manage-main-menu').classList.add('hidden');
+        if(type === 'CONDIZIONI') {
             const list = document.getElementById('manage-conditions-list');
-            list.innerHTML = ""; list.classList.remove('hidden');
-            const currentConds = (cachedNPCs[currentTargetPG].cond || "").split(",").filter(c => c !== "");
+            list.innerHTML = "";
+            const activeConds = (currentTargetPG.cond || "").split(',').filter(x => x);
             CONDITIONS.forEach(c => {
-                const has = currentConds.includes(c);
-                list.innerHTML += `<div class="cond-list-item">${c} <button onclick="toggleCondition('${c}')" class="btn-taverna" style="padding:2px 8px; background:${has?'#b71c1c':'#2e7d32'}; color:white">${has?'RIMUOVI':'AGGIUNGI'}</button></div>`;
+                const isActive = activeConds.includes(c);
+                list.innerHTML += `<div class="cond-list-item">
+                    <span>${c}</span>
+                    <button class="btn-taverna" style="padding:4px 8px; font-size:0.6rem; background:${isActive?'#b71c1c':'#2e7d32'}; color:white;" 
+                        onclick="toggleCondition('${c}', ${isActive})">${isActive?'RIMUOVI':'AGGIUNGI'}</button>
+                </div>`;
             });
+            list.classList.remove('hidden');
         } else {
             document.getElementById('manage-action-input').classList.remove('hidden');
-            document.getElementById('manage-value').dataset.mode = action;
+            document.getElementById('manage-value').value = "";
         }
     }
 
-    function toggleCondition(cond) {
-        let p = cachedNPCs[currentTargetPG];
-        let conds = (p.cond || "").split(",").filter(c => c !== "");
-        let removed = false;
-        if(conds.includes(cond)) { 
-            conds = conds.filter(c => c !== cond); 
-            removed = true;
-        } else { 
-            conds.push(cond); 
-        }
-        const newCond = conds.join(",");
-        campaignRef.child('players').child(currentTargetPG).update({ cond: newCond });
-        
-        const msgText = removed ? `${currentTargetPG} non è più ${cond}.` : `${currentTargetPG} ora è: ${newCond}`;
-        
-        campaignRef.child('messages').push({
-            sender: me.name, senderRole: 'master', photo: me.photo,
-            text: msgText, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
-        });
-        showManageAction('CONDIZIONI');
-    }
-
+    // FIX: Aggiunto log automatico danni/cure in chat
     function applyManageAction() {
-        const mode = document.getElementById('manage-value').dataset.mode;
-        const val = parseInt(document.getElementById('manage-value').value) || 0;
-        let p = cachedNPCs[currentTargetPG];
-        let newHp = p.hp;
-        if(mode === 'DANNI') { newHp -= val; }
-        else if(mode === 'GUARIGIONE') { newHp = Math.min(p.hpMax, newHp + val); }
-        if(newHp < 0) newHp = 0;
-        
-        let customMsg = "";
-        if(mode === 'DANNI' && newHp <= 0) {
-            if(p.type === 'PC') {
-                customMsg = `${p.name} subisce ${val} danni, PF Attuali 0/${p.hpMax}. ${p.name} cade privo di sensi.`;
-            } else {
-                customMsg = `${p.name} subisce ${val} danni. ${p.name} è morto 💀.`;
-            }
-        } else {
-            customMsg = `${p.name} ${mode === 'DANNI' ? 'subisce' : 'riceve'} ${val} PF. (Attuali: ${newHp})`;
+        const val = parseInt(document.getElementById('manage-value').value);
+        if(!val || val <= 0) return;
+        let newHP = currentTargetPG.hp;
+        let logMsg = "";
+
+        if(currentActionType === 'DANNI') {
+            newHP = Math.max(0, currentTargetPG.hp - val);
+            logMsg = `${currentTargetPG.name} subisce ${val} danni. PF Attuali: ${newHP}/${currentTargetPG.hpMax}`;
+        } else if(currentActionType === 'GUARIGIONE') {
+            newHP = Math.min(currentTargetPG.hpMax, currentTargetPG.hp + val);
+            logMsg = `${currentTargetPG.name} recupera ${val} PF. PF Attuali: ${newHP}/${currentTargetPG.hpMax}`;
         }
 
-        campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
-        campaignRef.child('messages').push({
-            sender: me.name, senderRole: 'master', photo: me.photo,
-            text: customMsg,
-            lang: "Comune", to: 'ALL', time: Date.now(), type: mode === 'DANNI' ? 'damage' : 'heal'
+        campaignRef.child('players').child(currentTargetPG.name).update({ hp: newHP });
+        
+        // Invia log in chat
+        campaignRef.child('chat').push({
+            sender: "SISTEMA",
+            role: "master",
+            text: logMsg,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            lang: "Comune",
+            recipient: "ALL",
+            photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
         });
+
         closeManage();
     }
 
-    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; document.getElementById('manage-value').value = ""; }
+    function toggleCondition(c, isActive) {
+        let conds = (currentTargetPG.cond || "").split(',').filter(x => x);
+        if(isActive) conds = conds.filter(x => x !== c);
+        else conds.push(c);
+        campaignRef.child('players').child(currentTargetPG.name).update({ cond: conds.join(',') });
+        showManageAction('CONDIZIONI');
+    }
+
+    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; }
+
+    async function joinGame(isAuto = false) {
+        const name = document.getElementById('user-name').value.trim();
+        const code = document.getElementById('camp-code').value.trim().toUpperCase();
+        const photoFile = document.getElementById('user-photo').files[0];
+        const role = document.getElementById('user-role').value;
+
+        if(!name || !code) return alert("Inserisci Nome e Codice!");
+
+        let photoUrl = me.photo;
+        if(photoFile) photoUrl = await compressImg(photoFile);
+
+        const selectedLangs = Array.from(document.querySelectorAll('.lang-check:checked')).map(c => c.value);
+
+        me = { 
+            name, 
+            code, 
+            role, 
+            photo: photoUrl, 
+            hp: parseInt(document.getElementById('p-hp').value) || 10,
+            hpMax: parseInt(document.getElementById('p-hp').value) || 10,
+            ac: parseInt(document.getElementById('p-ac').value) || 10,
+            langs: selectedLangs,
+            cond: ""
+        };
+
+        campaignRef = db.ref('campaigns/' + code);
+        
+        if(role === 'player') {
+            campaignRef.child('players').child(name).update(me);
+            campaignRef.child('players').child(name).onDisconnect().remove();
+        } else {
+            document.getElementById('master-panel').classList.remove('hidden');
+            document.getElementById('master-only-ui').classList.remove('hidden');
+        }
+
+        document.getElementById('login-ui').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-code').innerText = code;
+
+        saveToVault(me);
+        saveRecent(code);
+        localStorage.setItem('taverna_active_session', JSON.stringify(me));
+
+        if(firstLoad) {
+            setupListeners();
+            firstLoad = false;
+        }
+        
+        filterLangsBySender("MASTER");
+        document.getElementById('silent-wake-lock').play().catch(()=>{});
+    }
+
+    function setupListeners() {
+        campaignRef.child('players').on('value', snap => {
+            const players = snap.val() || {};
+            cachedNPCs = players;
+            const bar = document.getElementById('party-bar');
+            const masterSelect = document.getElementById('sender-choice');
+            const playerWhisper = document.getElementById('player-msg-recipient');
+            const multiBox = document.getElementById('multi-selector');
+            const currentSender = masterSelect.value;
+            const currentRecip = playerWhisper.value;
+
+            bar.innerHTML = "";
+            masterSelect.innerHTML = '<option value="MASTER">Parla come: MASTER</option>';
+            playerWhisper.innerHTML = '<option value="ALL">A: TUTTI</option>';
+            multiBox.innerHTML = "";
+
+            const sorted = Object.values(players).sort((a,b) => (b.init || 0) - (a.init || 0));
+
+            sorted.forEach(p => {
+                const isNPC = p.type === 'NPC' || p.type === 'BOSS';
+                const isBoss = p.type === 'BOSS';
+                const hpPerc = Math.max(0, (p.hp / p.hpMax) * 100);
+                const hpCol = hpPerc > 50 ? '#4caf50' : (hpPerc > 20 ? '#ff9800' : '#f44336');
+
+                const condHtml = (p.cond || "").split(',').filter(x=>x).map(c => `<span class="cond-badge">${c}</span>`).join('');
+
+                bar.innerHTML += `
+                    <div class="pg-tag ${isNPC?'npc-tag':''} ${isBoss?'boss-tag':''}" onclick="managePG('${p.name}')">
+                        <div class="avatar-container">
+                            <img src="${p.photo}" class="avatar-circle" style="filter: ${p.hp<=0?'grayscale(1)':'none'}">
+                            <div class="hp-overlay" style="background: ${hpCol}; opacity: ${0.7 - (hpPerc/200)}"></div>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-weight:bold; font-size:0.8rem;">${p.name} ${p.init > 0 ? ' (⚔️'+p.init+')' : ''}</div>
+                            <div style="font-size:0.65rem; color:#444;">${p.info || ''}</div>
+                            <div style="font-size:0.7rem; font-weight:bold;">PF: ${p.hp}/${p.hpMax} | CA: ${p.ac}</div>
+                            <div>${condHtml}</div>
+                        </div>
+                    </div>
+                `;
+
+                if(isNPC) {
+                    masterSelect.innerHTML += `<option value="${p.name}">Parla come: ${p.name}</option>`;
+                }
+                if(p.name !== me.name) {
+                    playerWhisper.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
+                    multiBox.innerHTML += `<label class="check-item"><input type="checkbox" class="multi-dest" value="${p.name}"> ${p.name}</label>`;
+                }
+            });
+            masterSelect.value = currentSender;
+            playerWhisper.value = currentRecip;
+            if(me.role === 'player') document.getElementById('player-whisper-ui').classList.remove('hidden');
+        });
+
+        campaignRef.child('chat').limitToLast(30).on('child_added', snap => {
+            const m = snap.val();
+            if(m.recipient !== 'ALL' && m.recipient !== me.name && m.sender !== me.name && me.role !== 'master') {
+                if(!m.recipient.includes(me.name)) return;
+            }
+            displayMsg(m);
+        });
+
+        campaignRef.child('combat').on('value', snap => {
+            const c = snap.val() || { round: 0 };
+            currentRound = c.round;
+            const display = document.getElementById('round-display');
+            display.innerText = c.round > 0 ? `ROUND: ${c.round}` : "";
+            document.getElementById('btn-round').classList.toggle('hidden', c.round === 0);
+        });
+    }
+
+    // FIX: Sfondo sussurri coordinato al colore del testo "sussurra"
+    function displayMsg(m) {
+        const flow = document.getElementById('chat-flow');
+        const isWhisper = m.recipient !== 'ALL';
+        const isFromMe = m.sender === me.name;
+        
+        let processedText = m.text;
+        if(m.lang !== "Comune" && !me.langs.includes(m.lang) && me.role !== 'master') {
+            processedText = scrambleText(m.text, m.lang);
+        }
+
+        const whisperLabel = isWhisper ? `<strong style="color:var(--amber);">[SUSSURRA]</strong> ` : "";
+        const langLabel = m.lang !== "Comune" ? `<i style="color:var(--gold); font-size:0.75rem;">(${m.lang})</i> ` : "";
+        
+        // Colore sbiadito per lo sfondo del sussurro
+        const bubbleBg = isWhisper ? 'rgba(255, 202, 40, 0.15)' : 'rgba(255,255,255,0.05)';
+        const borderCol = isWhisper ? 'var(--amber)' : 'transparent';
+
+        flow.innerHTML += `
+            <div class="chat-bubble" style="justify-content: ${isFromMe?'flex-end':'flex-start'}">
+                ${!isFromMe ? `<img src="${m.photo}" class="chat-avatar">` : ''}
+                <div class="chat-text" style="border-left: 2px solid ${borderCol}; background: ${bubbleBg}">
+                    <div style="font-weight:bold; color:var(--amber); font-size:0.75rem;">
+                        ${m.sender} <span class="chat-time">${m.time}</span>
+                    </div>
+                    <div>${whisperLabel}${langLabel}${processedText}</div>
+                </div>
+            </div>
+        `;
+        flow.scrollTop = flow.scrollHeight;
+    }
+
+    function scrambleText(txt, lang) {
+        const words = txt.split(' ');
+        const dict = DICTIONARY[lang] || ["..."];
+        return words.map(w => dict[Math.floor(Math.random() * dict.length)]).join(' ');
+    }
 
     function sendMsg() {
         const input = document.getElementById('msg-input');
         const text = input.value.trim();
         if(!text) return;
-        const lang = document.getElementById('current-lang').value;
-        let sender = me.name;
-        let photo = me.photo;
-        let role = me.role;
-        let to = 'ALL';
+
+        let senderName = me.name;
+        let senderPhoto = me.photo;
+        let recipient = "ALL";
 
         if(me.role === 'master') {
-            const sChoice = document.getElementById('sender-choice').value;
-            if(sChoice !== "MASTER") {
-                sender = sChoice;
-                photo = cachedNPCs[sChoice].photo;
-                role = 'npc';
+            const choice = document.getElementById('sender-choice').value;
+            if(choice !== "MASTER") {
+                senderName = choice;
+                senderPhoto = cachedNPCs[choice].photo;
+            } else {
+                senderName = "MASTER";
+                senderPhoto = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
             }
-            const recipient = document.getElementById('msg-recipient').value;
-            if(recipient === 'MULTI') {
-                to = Array.from(document.querySelectorAll('.whisper-check:checked')).map(c => c.value);
-            } else { to = recipient; }
+            
+            const rChoice = document.getElementById('msg-recipient').value;
+            if(rChoice === "MULTI") {
+                recipient = Array.from(document.querySelectorAll('.multi-dest:checked')).map(c => c.value);
+                if(recipient.length === 0) recipient = "ALL";
+            } else {
+                recipient = rChoice;
+            }
         } else {
-            to = document.getElementById('player-msg-recipient').value;
+            recipient = document.getElementById('player-msg-recipient').value;
         }
 
-        campaignRef.child('messages').push({
-            sender: sender, senderRole: role, photo: photo, text: text, lang: lang, to: to, time: Date.now()
+        campaignRef.child('chat').push({
+            sender: senderName,
+            role: me.role,
+            text: text,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            lang: document.getElementById('current-lang').value,
+            recipient: recipient,
+            photo: senderPhoto
         });
+
         input.value = "";
     }
 
@@ -614,64 +654,70 @@
     }
 
     function clearChat() {
-        if(confirm("Vuoi cancellare tutta la cronologia?")) {
-            campaignRef.child('messages').remove();
-            document.getElementById('chat-flow').innerHTML = "";
-        }
-    }
-
-    function openSettings() {
-        if(me.role === 'master') return;
-        document.getElementById('set-hp').value = me.hpMax;
-        document.getElementById('set-ac').value = me.ac;
-        document.getElementById('modal-settings').style.display = 'flex';
-    }
-    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
-    function saveSettings() {
-        if(me.role === 'master') return;
-        const newMax = parseInt(document.getElementById('set-hp').value) || me.hpMax;
-        const newAC = parseInt(document.getElementById('set-ac').value) || me.ac;
-        me.hpMax = newMax; me.hp = newMax; me.ac = newAC;
-        campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: me.hpMax, ac: me.ac });
-        closeSettings();
+        if(confirm("Vuoi pulire tutta la chat?")) campaignRef.child('chat').remove();
     }
 
     function exitTavern() {
-        localStorage.removeItem('taverna_active_session'); 
-        location.reload();
+        if(confirm("Vuoi uscire dalla locanda?")) {
+            localStorage.removeItem('taverna_active_session');
+            location.reload();
+        }
     }
 
-    function saveToVault(p) {
-        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        v = v.filter(x => x.name !== p.name);
-        v.push(p);
-        localStorage.setItem('dd_vault', JSON.stringify(v));
-        loadVault();
-    }
-
-    function loadVault() {
-        const box = document.getElementById('pg-vault');
-        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        box.innerHTML = "";
-        v.forEach(p => {
-            const d = document.createElement('div'); d.className = 'vault-card';
-            d.innerHTML = `<span class="del-vault" onclick="event.stopPropagation(); deleteVault('${p.name}')">×</span>
-                <img src="${p.photo}"><div>${p.name}</div>`;
-            d.onclick = () => {
-                document.getElementById('user-name').value = p.name;
-                document.getElementById('p-race-class').value = p.info;
-                document.getElementById('p-hp').value = p.hpMax;
-                document.getElementById('p-ac').value = p.ac;
-                me.photo = p.photo;
-                document.querySelectorAll('.lang-check').forEach(c => {
-                    if(c.value !== "Comune") c.checked = p.langs.includes(c.value);
-                });
+    function compressImg(file) {
+        return new Promise(res => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = e => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const size = 120;
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    res(canvas.toDataURL('image/jpeg', 0.6));
+                };
             };
-            box.appendChild(d);
         });
     }
 
-    function deleteVault(name) {
+    function saveToVault(data) {
+        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        v = v.filter(x => x.name !== data.name);
+        v.unshift(data);
+        if(v.length > 8) v.pop();
+        localStorage.setItem('dd_vault', JSON.stringify(v));
+    }
+
+    function loadVault() {
+        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        const box = document.getElementById('pg-vault');
+        box.innerHTML = "";
+        v.forEach(p => {
+            box.innerHTML += `
+                <div class="vault-card" onclick="applyVault('${p.name}')">
+                    <span class="del-vault" onclick="event.stopPropagation(); removeFromVault('${p.name}')">×</span>
+                    <img src="${p.photo}">
+                    <div>${p.name}</div>
+                </div>`;
+        });
+    }
+
+    function applyVault(name) {
+        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        const p = v.find(x => x.name === name);
+        if(p) {
+            document.getElementById('user-name').value = p.name;
+            document.getElementById('user-role').value = p.role;
+            document.getElementById('p-hp').value = p.hpMax;
+            document.getElementById('p-ac').value = p.ac;
+            document.getElementById('p-extra').classList.toggle('hidden', p.role==='master');
+        }
+    }
+
+    function removeFromVault(name) {
         let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
         v = v.filter(x => x.name !== name);
         localStorage.setItem('dd_vault', JSON.stringify(v));
@@ -706,6 +752,23 @@
         r = r.filter(x => x !== code);
         localStorage.setItem('recent_rooms', JSON.stringify(r));
         updateRecentUI();
+    }
+
+    function openSettings() {
+        document.getElementById('set-hp').value = me.hpMax;
+        document.getElementById('set-ac').value = me.ac;
+        document.getElementById('modal-settings').style.display = 'flex';
+    }
+    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
+    function saveSettings() {
+        const nhp = parseInt(document.getElementById('set-hp').value) || me.hpMax;
+        const nac = parseInt(document.getElementById('set-ac').value) || me.ac;
+        me.hpMax = nhp;
+        me.hp = Math.min(me.hp, nhp);
+        me.ac = nac;
+        if(me.role === 'player') campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: nhp, ac: nac });
+        localStorage.setItem('taverna_active_session', JSON.stringify(me));
+        closeSettings();
     }
 </script>
 </body>
