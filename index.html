@@ -87,6 +87,7 @@
     </header>
     <div id="master-panel" class="hidden" style="padding:5px; background: #2c1d1a; display: flex; justify-content: center; gap: 8px;">
         <button onclick="spawnNPC()" class="btn-taverna">➕ PNG</button>
+        <button onclick="clearChat()" class="btn-taverna" style="background:#5d4037; color:white;">🧹 PULISCI</button>
         <button onclick="startCombat()" class="btn-taverna" style="background:red; color:white;">⚔️ INIT</button>
         <button onclick="endCombat()" class="btn-taverna">🏳️ FINE</button>
     </div>
@@ -305,7 +306,7 @@
                 let stats = !isNPC ? `<br><small style="color:green;">${p.info || ''} | ${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small>PNG</small>`;
                 if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
                 bar.innerHTML += `<div class="pg-tag ${isNPC?'npc-tag':''}">
-                    ${(me.role==='master'&&isNPC)?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
+                    ${(me.role==='master')?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
                     <img src="${p.photo}" class="avatar-circle">
                     <div><strong>${p.name}</strong>${stats}</div>
                 </div>`;
@@ -326,10 +327,10 @@
                 const f = document.getElementById('chat-flow');
                 const d = document.createElement('div'); d.className = 'chat-bubble';
                 const isWhisper = m.to !== 'ALL';
-                const tag = isWhisper ? `<span style="color:red;font-size:0.7rem;"> [sussurro]</span>` : '';
+                const tag = isWhisper ? `<span style="color:#9c27b0;font-size:0.7rem;"> [sussurro]</span>` : '';
                 const date = m.time ? new Date(m.time) : new Date();
                 const timeStr = date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
-                const whisperStyle = isWhisper ? 'font-style:italic; border-left: 2px solid var(--gold); background: rgba(184,134,11,0.05);' : '';
+                const whisperStyle = isWhisper ? 'font-style:italic; border-left: 2px solid #9c27b0; background: rgba(156, 39, 176, 0.1);' : '';
                 d.innerHTML = `<img src="${m.photo}" class="chat-avatar"><div class="chat-text" style="${whisperStyle}"><strong>${m.sender}${tag} <span class="chat-time">${timeStr}</span></strong><br>${m.text}</div>`;
                 f.appendChild(d); f.scrollTop = f.scrollHeight;
             }
@@ -350,6 +351,13 @@
         }
         campaignRef.child('messages').push({ sender: me.name, photo: me.photo, text: i.value, to: to, time: Date.now() });
         i.value = "";
+    }
+
+    function clearChat() {
+        if(confirm("Vuoi svuotare tutta la cronologia messaggi della stanza?")) {
+            campaignRef.child('messages').remove();
+            document.getElementById('chat-flow').innerHTML = "";
+        }
     }
 
     async function spawnNPC() {
