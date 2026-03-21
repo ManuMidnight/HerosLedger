@@ -36,7 +36,6 @@
         .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
         .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
         
-        /* Effetto BOSS */
         .boss-tag { border: 3px solid #ffd700 !important; background: linear-gradient(135deg, #fff3b0 0%, #f5e1b6 50%, #fff3b0 100%); box-shadow: 0 0 10px #ffca28; animation: boss-shine 3s infinite; }
         @keyframes boss-shine { 0% { filter: brightness(1); } 50% { filter: brightness(1.2); } 100% { filter: brightness(1); } }
 
@@ -264,6 +263,16 @@
 
         loadVault();
         updateRecentUI();
+        
+        const savedSession = localStorage.getItem('taverna_active_session');
+        if(savedSession) {
+            const s = JSON.parse(savedSession);
+            document.getElementById('user-name').value = s.name;
+            document.getElementById('camp-code').value = s.code;
+            document.getElementById('user-role').value = s.role;
+            me = s;
+            joinGame(true);
+        }
     };
 
     function filterLangsBySender(choice) {
@@ -369,12 +378,12 @@
     }
 
     async function joinGame(isAuto = false) {
-        me.name = document.getElementById('user-name').value.trim();
-        me.code = document.getElementById('camp-code').value.toUpperCase().trim();
-        me.role = document.getElementById('user-role').value;
-        if(!me.name || !me.code) return alert("Dati incompleti!");
-        document.getElementById('silent-wake-lock').play().catch(()=>{});
         if(!isAuto) {
+            me.name = document.getElementById('user-name').value.trim();
+            me.code = document.getElementById('camp-code').value.toUpperCase().trim();
+            me.role = document.getElementById('user-role').value;
+            if(!me.name || !me.code) return alert("Dati incompleti!");
+            
             me.info = document.getElementById('p-race-class').value;
             me.hpMax = parseInt(document.getElementById('p-hp').value) || 10;
             me.hp = me.hpMax;
@@ -385,11 +394,14 @@
             saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
         }
         
+        document.getElementById('silent-wake-lock').play().catch(()=>{});
         saveRecent(me.code);
+        
+        localStorage.setItem('taverna_active_session', JSON.stringify(me));
 
         if(me.role === 'master') { 
             me.langs = [...ALL_LANGS]; 
-            document.getElementById('btn-settings').style.display = 'none'; // Nascondi ingranaggio al Master
+            document.getElementById('btn-settings').style.display = 'none';
         }
         const lSelect = document.getElementById('current-lang');
         lSelect.innerHTML = "";
@@ -424,7 +436,6 @@
             if(pSel) pSel.innerHTML = '<option value="ALL">A: TUTTI</option>';
             if(multi) multi.innerHTML = "";
             Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
-                // MODIFICA: Assicura che la foto corretta venga recuperata per i PNG o giocatori
                 const characterPhoto = p.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
                 if(me.role === 'master' && (p.type === 'NPC' || p.type === 'BOSS')) senderChoice.innerHTML += `<option value="${p.name}">Parla come: ${p.name}</option>`;
@@ -441,8 +452,10 @@
                 const skull = p.hp <= 0 ? "💀" : "";
                 let condHtml = "";
                 if(p.cond) p.cond.split(",").filter(c => c.trim() !== "").forEach(c => condHtml += `<span class="cond-badge">${c}</span>`);
+                
                 let showStats = (p.type === 'PC' || me.role === 'master');
-                let stats = showStats ? `<br><small style="color:green; cursor:pointer" onclick="openManagePG('${p.name}')">
+                let statsAction = (me.role === 'master') ? `onclick="openManagePG('${p.name}')"` : "";
+                let stats = showStats ? `<br><small style="color:green; cursor:pointer" ${statsAction}>
                              ${p.info || ''} | ${p.hp}/${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small style="color:green">${p.info || ''}</small>`;
                 if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
                 
@@ -483,16 +496,10 @@
                 f.appendChild(d); f.scrollTop = f.scrollHeight;
             }
         });
-
-        campaignRef.child('messages').on('value', snap => {
-            if(!snap.exists()) {
-                document.getElementById('chat-flow').innerHTML = "";
-            }
-        });
     }
 
     function openManagePG(name) {
-        if(me.role !== 'master' && name !== me.name) return;
+        if(me.role !== 'master') return; 
         currentTargetPG = name;
         document.getElementById('manage-title').innerText = "Gestione " + name;
         document.getElementById('modal-manage').style.display = 'flex';
@@ -521,13 +528,21 @@
     function toggleCondition(cond) {
         let p = cachedNPCs[currentTargetPG];
         let conds = (p.cond || "").split(",").filter(c => c !== "");
-        if(conds.includes(cond)) { conds = conds.filter(c => c !== cond); }
-        else { conds.push(cond); }
+        let removed = false;
+        if(conds.includes(cond)) { 
+            conds = conds.filter(c => c !== cond); 
+            removed = true;
+        } else { 
+            conds.push(cond); 
+        }
         const newCond = conds.join(",");
         campaignRef.child('players').child(currentTargetPG).update({ cond: newCond });
+        
+        const msgText = removed ? `${currentTargetPG} non è più ${cond}.` : `${currentTargetPG} ora è: ${newCond}`;
+        
         campaignRef.child('messages').push({
-            sender: "SISTEMA", senderRole: 'master', photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-            text: `${currentTargetPG} ora è: ${newCond || 'Normale'}`, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
+            sender: me.name, senderRole: 'master', photo: me.photo,
+            text: msgText, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
         });
         showManageAction('CONDIZIONI');
     }
@@ -554,7 +569,7 @@
 
         campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
         campaignRef.child('messages').push({
-            sender: "SISTEMA", senderRole: 'master', photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            sender: me.name, senderRole: 'master', photo: me.photo,
             text: customMsg,
             lang: "Comune", to: 'ALL', time: Date.now(), type: mode === 'DANNI' ? 'damage' : 'heal'
         });
@@ -622,6 +637,7 @@
     }
 
     function exitTavern() {
+        localStorage.removeItem('taverna_active_session'); 
         location.reload();
     }
 
