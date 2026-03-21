@@ -13,14 +13,23 @@
 
     <style>
         :root { --wood: #3e2723; --stone: #424242; --amber: #ffca28; --gold: #b8860b; --parchment: #f5e1b6; }
-        /* FIX: Impedisce il pull-to-refresh e blocca lo scroll indesiderato */
-        body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior-y: none; }
+        
+        /* FIX: Blocca il refresh della pagina su mobile */
+        html, body { 
+            overflow: hidden; 
+            overscroll-behavior-y: none; 
+            height: 100%;
+            position: fixed;
+            width: 100%;
+        }
+
+        body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; margin: 0; display: flex; flex-direction: column; }
         
         .login-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; overflow-y: auto; }
         .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
         input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
         #game-ui { display: none; flex-direction: column; height: 100vh; }
-        header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; }
+        header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; flex-shrink: 0; }
         .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
         
         .vault-container { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid #444; }
@@ -34,7 +43,7 @@
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
         .modal-content { background: #212121; padding: 20px; border-radius: 8px; border: 2px solid var(--gold); width: 300px; max-height: 90vh; overflow-y: auto; }
         
-        #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; }
+        #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; flex-shrink: 0; }
         .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
         .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
         
@@ -45,17 +54,15 @@
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
         .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
         
-        /* FIX: Scroll fluido e senza ricarica pagina */
-        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); -webkit-overflow-scrolling: touch; }
         
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
         .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
-        .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); }
+        .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); flex-shrink: 0; }
         .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; }
         #multi-selector { background: #5d4037; padding: 10px; border: 2px solid var(--gold); margin-bottom: 8px; border-radius: 5px; display: none; max-height: 120px; overflow-y: auto; }
         
-        /* FIX: Allineamento checkbox lingue */
         .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; color: white; font-size: 0.9rem; cursor: pointer; text-align: left; }
         .check-item input { width: auto; margin: 0; cursor: pointer; }
 
@@ -231,11 +238,11 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", hp: 10, hpMax: 10, ac: 10, info: "", langs: ["Comune"] };
-    let firstLoad = true;
     let currentTargetPG = null;
     let npcTempPhoto = null;
     let cachedNPCs = {};
     let currentRound = 0;
+    let currentManageMode = 'MAIN';
 
     const ALL_LANGS = ["Comune", "Elfico", "Gigante", "Gnomesco", "Goblin", "Halfling", "Nanico", "Orchesco", "Abissale", "Celestiale", "Draconico", "Infernale", "Silvano", "Sottocomune"];
     const CONDITIONS = ["Accecato", "Affascinato", "Afferrato", "Assordato", "Avvelenato", "Incapacitato", "Invisibile", "Paralizzato", "Pietrificato", "Prono", "Spaventato", "Stordito", "Trattenuto", "Indebolito"];
@@ -256,12 +263,16 @@
         "Sottocomune": ["Zar", "drow", "under", "dark", "deep", "void"]
     };
 
+    // FIX: Previene pull-to-refresh
+    window.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+
     window.onload = () => {
         const langDiv = document.getElementById('lang-selection');
         const npcLangDiv = document.getElementById('npc-lang-selection');
         ALL_LANGS.forEach(l => {
             const checked = l === "Comune" ? "checked disabled" : "";
-            // FIX: Allineamento e stile selezione lingue
             langDiv.innerHTML += `<label class="check-item"><input type="checkbox" class="lang-check" value="${l}" ${checked}> ${l}</label>`;
             npcLangDiv.innerHTML += `<label class="check-item"><input type="checkbox" class="npc-lang-check" value="${l}" ${l==="Comune"?"checked":""}> ${l}</label>`;
         });
@@ -288,16 +299,9 @@
         const lSelect = document.getElementById('current-lang');
         lSelect.innerHTML = "";
         let availableLangs = [];
-
-        if (choice === "MASTER") {
-            availableLangs = ALL_LANGS;
-        } else if (cachedNPCs[choice]) {
-            availableLangs = cachedNPCs[choice].langs || ["Comune"];
-        }
-
-        availableLangs.forEach(l => {
-            lSelect.innerHTML += `<option value="${l}">${l}</option>`;
-        });
+        if (choice === "MASTER") availableLangs = ALL_LANGS;
+        else if (cachedNPCs[choice]) availableLangs = cachedNPCs[choice].langs || ["Comune"];
+        availableLangs.forEach(l => { lSelect.innerHTML += `<option value="${l}">${l}</option>`; });
     }
 
     async function joinGame(isAuto = false) {
@@ -313,10 +317,7 @@
             me.role = roleInput;
             me.langs = Array.from(document.querySelectorAll('.lang-check:checked')).map(c => c.value);
             if(!me.langs.includes("Comune")) me.langs.push("Comune");
-            
-            if(photoInput) {
-                me.photo = await compressImg(photoInput);
-            }
+            if(photoInput) me.photo = await compressImg(photoInput);
 
             if(me.role === 'player') {
                 me.info = document.getElementById('p-race-class').value || "Avventuriero";
@@ -325,11 +326,7 @@
                 me.ac = parseInt(document.getElementById('p-ac').value) || 10;
                 me.conditions = [];
             } else {
-                me.hp = 999;
-                me.hpMax = 999;
-                me.ac = 10;
-                me.info = "Dungeon Master";
-                me.conditions = [];
+                me.hp = 999; me.hpMax = 999; me.ac = 10; me.info = "Dungeon Master"; me.conditions = [];
             }
             saveVault(me.name, me.photo, me.role, me.info, me.hpMax, me.ac, me.langs);
         }
@@ -347,21 +344,6 @@
             document.getElementById('master-panel').classList.remove('hidden');
             document.getElementById('master-only-ui').classList.remove('hidden');
             document.getElementById('btn-settings').classList.add('hidden');
-            campaignRef.child('players').on('value', snap => {
-                const ps = snap.val() || {};
-                const pSelect = document.getElementById('player-msg-recipient');
-                const mSelect = document.getElementById('msg-recipient');
-                const multi = document.getElementById('multi-selector');
-                
-                mSelect.innerHTML = `<option value="ALL">Destinatario: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>`;
-                multi.innerHTML = "";
-
-                Object.keys(ps).forEach(pid => {
-                    const pName = ps[pid].name;
-                    mSelect.innerHTML += `<option value="${pid}">${pName}</option>`;
-                    multi.innerHTML += `<label class="check-item"><input type="checkbox" class="multi-dest" value="${pid}"> ${pName}</label>`;
-                });
-            });
         } else {
             document.getElementById('player-whisper-ui').classList.remove('hidden');
             campaignRef.child('players').child(me.name).set(me);
@@ -371,28 +353,6 @@
         filterLangsBySender("MASTER");
         listenToData();
         setupWakeLock();
-    }
-
-    function setupWakeLock() {
-        const audio = document.getElementById('silent-wake-lock');
-        const attemptPlay = () => {
-            audio.play().catch(() => {
-                document.addEventListener('click', () => audio.play(), { once: true });
-            });
-        };
-        attemptPlay();
-        if ('wakeLock' in navigator) {
-            let wakeLock = null;
-            const requestWakeLock = async () => {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                } catch (err) {}
-            };
-            requestWakeLock();
-            document.addEventListener('visibilitychange', () => {
-                if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
-            });
-        }
     }
 
     function listenToData() {
@@ -406,47 +366,51 @@
                     const canUnderstand = me.role === 'master' || me.langs.includes(msg.lang);
                     const text = canUnderstand ? msg.text : translateText(msg.text, msg.lang);
                     const time = new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
                     const bubble = document.createElement('div');
                     bubble.className = "chat-bubble";
                     let borderStyle = msg.to !== "ALL" ? "border-left: 2px solid var(--amber);" : "";
-                    
-                    bubble.innerHTML = `
-                        <img src="${msg.photo}" class="chat-avatar">
-                        <div class="chat-text" style="${borderStyle}">
-                            <div style="font-weight:bold; font-size:0.7rem; color:var(--gold); display:flex; justify-content:space-between;">
-                                <span>${msg.from} ${msg.to !== 'ALL' ? ' 👤' : ''}</span>
-                                <span class="chat-time">${time}</span>
-                            </div>
-                            <div style="font-size:0.6rem; color:#aaa; margin-bottom:2px;">[${msg.lang}]</div>
-                            ${text}
-                        </div>
-                    `;
+                    bubble.innerHTML = `<img src="${msg.photo}" class="chat-avatar"><div class="chat-text" style="${borderStyle}"><div style="font-weight:bold; font-size:0.7rem; color:var(--gold); display:flex; justify-content:space-between;"><span>${msg.from} ${msg.to !== 'ALL' ? ' 👤' : ''}</span><span class="chat-time">${time}</span></div><div style="font-size:0.6rem; color:#aaa; margin-bottom:2px;">[${msg.lang}]</div>${text}</div>`;
                     flow.appendChild(bubble);
                 }
             });
             flow.scrollTop = flow.scrollHeight;
         });
 
-        campaignRef.child('players').on('value', snap => {
-            const players = snap.val() || {};
+        // FIX: Listener unico per aggiornare party-bar (PG e PNG insieme)
+        campaignRef.on('value', snap => {
+            const data = snap.val() || {};
+            const players = data.players || {};
+            const npcs = data.npcs || {};
             const bar = document.getElementById('party-bar');
+            const npcSelect = document.getElementById('sender-choice');
+            const mSelect = document.getElementById('msg-recipient');
+            const multi = document.getElementById('multi-selector');
+            const pWhisper = document.getElementById('player-msg-recipient');
+            
             bar.innerHTML = "";
+            cachedNPCs = {};
+            
+            // Aggiorna Selettori Master
+            if(me.role === 'master') {
+                mSelect.innerHTML = `<option value="ALL">Destinatario: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>`;
+                multi.innerHTML = "";
+                npcSelect.innerHTML = `<option value="MASTER">Parla come: MASTER</option>`;
+            }
+
+            // Aggiungi Giocatori
             Object.values(players).forEach(p => {
                 bar.innerHTML += createPGTag(p, false);
+                if(me.role === 'master') {
+                    mSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+                    multi.innerHTML += `<label class="check-item"><input type="checkbox" class="multi-dest" value="${p.name}"> ${p.name}</label>`;
+                }
             });
-            campaignRef.child('npcs').once('value', nSnap => {
-                const npcs = nSnap.val() || {};
-                const npcSelect = document.getElementById('sender-choice');
-                const oldVal = npcSelect.value;
-                npcSelect.innerHTML = `<option value="MASTER">Parla come: MASTER</option>`;
-                cachedNPCs = {};
-                Object.values(npcs).forEach(n => {
-                    bar.innerHTML += createPGTag(n, true);
-                    npcSelect.innerHTML += `<option value="${n.name}">${n.name}</option>`;
-                    cachedNPCs[n.name] = n;
-                });
-                npcSelect.value = oldVal;
+
+            // Aggiungi PNG
+            Object.values(npcs).forEach(n => {
+                bar.innerHTML += createPGTag(n, true);
+                cachedNPCs[n.name] = n;
+                if(me.role === 'master') npcSelect.innerHTML += `<option value="${n.name}">${n.name}</option>`;
             });
         });
 
@@ -461,223 +425,10 @@
         const color = hpPerc > 50 ? "#4caf50" : (hpPerc > 20 ? "#ff9800" : "#f44336");
         const isBoss = p.info && p.info.includes("BOSS");
         const tagClass = isNPC ? (isBoss ? "pg-tag npc-tag boss-tag" : "pg-tag npc-tag") : "pg-tag";
-        
         let condsHtml = "";
-        if(p.conditions) {
-            p.conditions.forEach(c => { condsHtml += `<span class="cond-badge">${c.substring(0,3)}</span>`; });
-        }
+        if(p.conditions) p.conditions.forEach(c => { condsHtml += `<span class="cond-badge">${c.substring(0,3)}</span>`; });
 
-        return `
-            <div class="${tagClass}" onclick="openManage('${p.name}', ${isNPC})">
-                <div class="avatar-container">
-                    <img src="${p.photo}" class="avatar-circle">
-                    <div class="hp-overlay" style="background: ${color}; opacity: ${1 - hpPerc/100}"></div>
-                </div>
-                <div style="flex:1">
-                    <div style="font-weight:bold; font-size:0.8rem;">${p.name}</div>
-                    <div style="font-size:0.6rem; opacity:0.8;">${p.info}</div>
-                    <div>${condsHtml}</div>
-                </div>
-                <div style="text-align:right">
-                    <div style="font-size:0.8rem; font-weight:bold; color:${color}">${p.hp}/${p.hpMax}</div>
-                    <div style="font-size:0.6rem;">🛡️ CA: ${p.ac}</div>
-                </div>
-            </div>
-        `;
-    }
-
-    function translateText(text, lang) {
-        const words = text.split(" ");
-        const dict = DICTIONARY[lang] || ["...", "..", "...."];
-        return words.map(() => dict[Math.floor(Math.random() * dict.length)]).join(" ");
-    }
-
-    function updateWhisperUI(val) {
-        document.getElementById('multi-selector').style.display = (val === "MULTI") ? "block" : "none";
-    }
-
-    function sendMsg() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        const lang = document.getElementById('current-lang').value;
-        if(!text) return;
-
-        let fromName = me.name;
-        let fromPhoto = me.photo;
-        let to = "ALL";
-
-        if(me.role === 'master') {
-            const sender = document.getElementById('sender-choice').value;
-            if(sender !== "MASTER") {
-                fromName = sender;
-                fromPhoto = cachedNPCs[sender].photo;
-            }
-            const recipient = document.getElementById('msg-recipient').value;
-            if(recipient === "MULTI") {
-                to = Array.from(document.querySelectorAll('.multi-dest:checked')).map(c => c.value);
-                if(to.length === 0) to = "ALL";
-            } else {
-                to = recipient;
-            }
-        } else {
-            to = document.getElementById('player-msg-recipient').value;
-        }
-
-        campaignRef.child('messages').push({
-            from: fromName,
-            photo: fromPhoto,
-            text: text,
-            lang: lang,
-            to: to,
-            time: firebase.database.ServerValue.TIMESTAMP
-        });
-        input.value = "";
-    }
-
-    function compressImg(file) {
-        return new Promise(res => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = e => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const size = 120;
-                    canvas.width = size;
-                    canvas.height = size;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, size, size);
-                    res(canvas.toDataURL('image/jpeg', 0.7));
-                };
-            };
-        });
-    }
-
-    function saveVault(name, photo, role, info, hpMax, ac, langs) {
-        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        v = v.filter(x => x.name !== name);
-        v.unshift({ name, photo, role, info, hpMax, ac, langs });
-        if(v.length > 8) v.pop();
-        localStorage.setItem('dd_vault', JSON.stringify(v));
-        loadVault();
-    }
-
-    function loadVault() {
-        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        const box = document.getElementById('pg-vault');
-        box.innerHTML = "";
-        v.forEach(p => {
-            const card = document.createElement('div');
-            card.className = "vault-card";
-            card.innerHTML = `<span class="del-vault" onclick="event.stopPropagation(); removeVault('${p.name}')">×</span>
-                              <img src="${p.photo}"><div>${p.name}</div>`;
-            card.onclick = () => {
-                document.getElementById('user-name').value = p.name;
-                document.getElementById('user-role').value = p.role;
-                document.getElementById('p-extra').classList.toggle('hidden', p.role==='master');
-                if(p.role === 'player') {
-                    document.getElementById('p-race-class').value = p.info;
-                    document.getElementById('p-hp').value = p.hpMax;
-                    document.getElementById('p-ac').value = p.ac;
-                    document.querySelectorAll('.lang-check').forEach(c => c.checked = p.langs.includes(c.value));
-                }
-                me.photo = p.photo;
-            };
-            box.appendChild(card);
-        });
-    }
-
-    function removeVault(name) {
-        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
-        v = v.filter(x => x.name !== name);
-        localStorage.setItem('dd_vault', JSON.stringify(v));
-        loadVault();
-    }
-
-    function saveRecent(code) {
-        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
-        r = r.filter(x => x !== code);
-        r.unshift(code);
-        if(r.length > 5) r.pop();
-        localStorage.setItem('recent_rooms', JSON.stringify(r));
-        updateRecentUI();
-    }
-
-    function updateRecentUI() {
-        const r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
-        const box = document.getElementById('recent-box');
-        const list = document.getElementById('recent-list');
-        if(r.length > 0) {
-            box.classList.remove('hidden');
-            list.innerHTML = `<div style="font-size:0.7rem; color:var(--gold); margin-bottom:5px;">Stanze recenti:</div>`;
-            r.forEach(code => {
-                list.innerHTML += `<span class="room-chip" onclick="document.getElementById('camp-code').value='${code}'">${code} 
-                    <span class="del-room" onclick="event.stopPropagation(); removeRecent('${code}')">×</span></span>`;
-            });
-        } else { box.classList.add('hidden'); }
-    }
-
-    function removeRecent(code) {
-        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
-        r = r.filter(x => x !== code);
-        localStorage.setItem('recent_rooms', JSON.stringify(r));
-        updateRecentUI();
-    }
-
-    function openSettings() {
-        document.getElementById('set-hp').value = me.hpMax;
-        document.getElementById('set-ac').value = me.ac;
-        document.getElementById('modal-settings').style.display = 'flex';
-    }
-    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
-    function saveSettings() {
-        const nhp = parseInt(document.getElementById('set-hp').value) || me.hpMax;
-        const nac = parseInt(document.getElementById('set-ac').value) || me.ac;
-        me.hpMax = nhp;
-        me.hp = Math.min(me.hp, nhp);
-        me.ac = nac;
-        if(me.role === 'player') campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: nhp, ac: nac });
-        closeSettings();
-    }
-
-    function exitTavern() {
-        if(confirm("Vuoi uscire dalla taverna?")) {
-            localStorage.removeItem('taverna_active_session');
-            location.reload();
-        }
-    }
-
-    function clearChat() { if(confirm("Cancellare tutta la cronologia?")) campaignRef.child('messages').remove(); }
-
-    function openSpawnModal() { document.getElementById('modal-spawn').style.display = 'flex'; }
-    function closeSpawnModal() { document.getElementById('modal-spawn').style.display = 'none'; }
-    function spawnNPC() {
-        const name = document.getElementById('npc-name').value.trim();
-        const title = document.getElementById('npc-title').value.trim();
-        const type = document.getElementById('npc-type').value;
-        const hp = parseInt(document.getElementById('npc-hp').value) || 10;
-        const ac = parseInt(document.getElementById('npc-ac').value) || 10;
-        const count = parseInt(document.getElementById('npc-count').value) || 1;
-        const langs = Array.from(document.querySelectorAll('.npc-lang-check:checked')).map(c => c.value);
-
-        if(!name) return alert("Nome obbligatorio!");
-
-        for(let i=1; i<=count; i++) {
-            const finalName = count > 1 ? `${name} ${i}` : name;
-            const finalInfo = type === 'BOSS' ? `BOSS - ${title}` : title;
-            campaignRef.child('npcs').child(finalName).set({
-                name: finalName,
-                info: finalInfo,
-                hp: hp,
-                hpMax: hp,
-                ac: ac,
-                langs: langs,
-                photo: npcTempPhoto || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-                conditions: []
-            });
-        }
-        closeSpawnModal();
+        return `<div class="${tagClass}" onclick="openManage('${p.name}', ${isNPC})"><div class="avatar-container"><img src="${p.photo}" class="avatar-circle"><div class="hp-overlay" style="background: ${color}; opacity: ${1 - hpPerc/100}"></div></div><div style="flex:1"><div style="font-weight:bold; font-size:0.8rem;">${p.name}</div><div style="font-size:0.6rem; opacity:0.8;">${p.info}</div><div>${condsHtml}</div></div><div style="text-align:right"><div style="font-size:0.8rem; font-weight:bold; color:${color}">${p.hp}/${p.hpMax}</div><div style="font-size:0.6rem;">🛡️ CA: ${p.ac}</div></div></div>`;
     }
 
     function openManage(targetName, isNPC) {
@@ -688,21 +439,18 @@
         showManageAction('MAIN');
     }
 
-    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; }
-
     function showManageAction(mode) {
+        currentManageMode = mode;
         document.getElementById('manage-main-menu').classList.toggle('hidden', mode !== 'MAIN');
         document.getElementById('manage-action-input').classList.toggle('hidden', mode !== 'DANNI' && mode !== 'GUARIGIONE');
         document.getElementById('manage-conditions-list').classList.toggle('hidden', mode !== 'CONDIZIONI');
-        
         if(mode === 'DANNI') document.getElementById('manage-value').placeholder = "Danni da infliggere...";
         if(mode === 'GUARIGIONE') document.getElementById('manage-value').placeholder = "Punti vita da curare...";
-        
         if(mode === 'CONDIZIONI') {
             const list = document.getElementById('manage-conditions-list');
             list.innerHTML = "";
-            const path = currentTargetPG.isNPC ? 'npcs' : 'players';
-            campaignRef.child(path).child(currentTargetPG.name).child('conditions').once('value', snap => {
+            const folder = currentTargetPG.isNPC ? 'npcs' : 'players';
+            campaignRef.child(folder).child(currentTargetPG.name).child('conditions').once('value', snap => {
                 const current = snap.val() || [];
                 CONDITIONS.forEach(c => {
                     const has = current.includes(c);
@@ -712,25 +460,23 @@
         }
     }
 
+    // FIX: Funzione calcolo danni/cure riparata
     function applyManageAction() {
         const val = parseInt(document.getElementById('manage-value').value);
-        if(!val) return;
-        const path = currentTargetPG.isPG ? 'npcs' : 'players'; // Simple toggle logic below
+        if(isNaN(val)) return;
         const folder = currentTargetPG.isNPC ? 'npcs' : 'players';
         
         campaignRef.child(folder).child(currentTargetPG.name).once('value', snap => {
-            const p = snap.val();
-            let newHp = p.hp;
-            if(document.getElementById('manage-action-input').previousElementSibling.classList.contains('hidden')) { // Very basic check
-                // This is a bit simplified, but checks mode
-            }
-            // Better check via placeholder
-            const mode = document.getElementById('manage-value').placeholder.includes("Danni") ? "DAM" : "HEAL";
-            newHp = mode === "DAM" ? p.hp - val : p.hp + val;
-            newHp = Math.max(0, Math.min(p.hpMax, newHp));
+            const data = snap.val();
+            if(!data) return;
+            let newHp = data.hp;
+            if(currentManageMode === 'DANNI') newHp -= val;
+            else if(currentManageMode === 'GUARIGIONE') newHp += val;
             
+            newHp = Math.max(0, Math.min(data.hpMax, newHp));
             campaignRef.child(folder).child(currentTargetPG.name).update({ hp: newHp });
-            if(!currentTargetPG.isNPC && currentTargetPG.name === me.name) { me.hp = newHp; }
+            if(!currentTargetPG.isNPC && currentTargetPG.name === me.name) me.hp = newHp;
+            document.getElementById('manage-value').value = "";
             closeManage();
         });
     }
@@ -746,47 +492,158 @@
         });
     }
 
+    function spawnNPC() {
+        const name = document.getElementById('npc-name').value.trim();
+        const title = document.getElementById('npc-title').value.trim();
+        const type = document.getElementById('npc-type').value;
+        const hp = parseInt(document.getElementById('npc-hp').value) || 10;
+        const ac = parseInt(document.getElementById('npc-ac').value) || 10;
+        const count = parseInt(document.getElementById('npc-count').value) || 1;
+        const langs = Array.from(document.querySelectorAll('.npc-lang-check:checked')).map(c => c.value);
+        if(!name) return alert("Nome obbligatorio!");
+
+        for(let i=1; i<=count; i++) {
+            const finalName = count > 1 ? `${name} ${i}` : name;
+            const finalInfo = type === 'BOSS' ? `BOSS - ${title}` : title;
+            campaignRef.child('npcs').child(finalName).set({
+                name: finalName, info: finalInfo, hp: hp, hpMax: hp, ac: ac, langs: langs,
+                photo: npcTempPhoto || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+                conditions: []
+            });
+        }
+        closeSpawnModal();
+    }
+
+    // --- FUNZIONI UTILITY (INALTERATE) ---
+    function setupWakeLock() {
+        const audio = document.getElementById('silent-wake-lock');
+        audio.play().catch(() => document.addEventListener('click', () => audio.play(), { once: true }));
+    }
+    function translateText(text, lang) {
+        const words = text.split(" ");
+        const dict = DICTIONARY[lang] || ["...", ".."];
+        return words.map(() => dict[Math.floor(Math.random() * dict.length)]).join(" ");
+    }
+    function updateWhisperUI(val) { document.getElementById('multi-selector').style.display = (val === "MULTI") ? "block" : "none"; }
+    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; }
+    function closeSpawnModal() { document.getElementById('modal-spawn').style.display = 'none'; }
+    function openSpawnModal() { document.getElementById('modal-spawn').style.display = 'flex'; }
+    function clearChat() { if(confirm("Cancellare tutta la cronologia?")) campaignRef.child('messages').remove(); }
+    function nextRound() { campaignRef.child('round').set(currentRound + 1); }
+    function endCombat() { if(confirm("Resettare round?")) campaignRef.child('round').set(0); }
+    function exitTavern() { if(confirm("Esci?")) { localStorage.removeItem('taverna_active_session'); location.reload(); } }
+    async function compressImg(file) {
+        return new Promise(res => {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = e => {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); const size = 120;
+                    canvas.width = size; canvas.height = size;
+                    canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+                    res(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        });
+    }
+    function saveVault(name, photo, role, info, hpMax, ac, langs) {
+        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        v = v.filter(x => x.name !== name); v.unshift({ name, photo, role, info, hpMax, ac, langs });
+        if(v.length > 8) v.pop(); localStorage.setItem('dd_vault', JSON.stringify(v)); loadVault();
+    }
+    function loadVault() {
+        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        const box = document.getElementById('pg-vault'); box.innerHTML = "";
+        v.forEach(p => {
+            const card = document.createElement('div'); card.className = "vault-card";
+            card.innerHTML = `<span class="del-vault" onclick="event.stopPropagation(); removeVault('${p.name}')">×</span><img src="${p.photo}"><div>${p.name}</div>`;
+            card.onclick = () => {
+                document.getElementById('user-name').value = p.name;
+                document.getElementById('user-role').value = p.role;
+                document.getElementById('p-extra').classList.toggle('hidden', p.role==='master');
+                if(p.role === 'player') {
+                    document.getElementById('p-race-class').value = p.info;
+                    document.getElementById('p-hp').value = p.hpMax;
+                    document.getElementById('p-ac').value = p.ac;
+                    document.querySelectorAll('.lang-check').forEach(c => c.checked = p.langs.includes(c.value));
+                }
+                me.photo = p.photo;
+            };
+            box.appendChild(card);
+        });
+    }
+    function removeVault(name) {
+        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        v = v.filter(x => x.name !== name); localStorage.setItem('dd_vault', JSON.stringify(v)); loadVault();
+    }
+    function saveRecent(code) {
+        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        r = r.filter(x => x !== code); r.unshift(code);
+        if(r.length > 5) r.pop(); localStorage.setItem('recent_rooms', JSON.stringify(r)); updateRecentUI();
+    }
+    function updateRecentUI() {
+        const r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        const box = document.getElementById('recent-box'); const list = document.getElementById('recent-list');
+        if(r.length > 0) {
+            box.classList.remove('hidden'); list.innerHTML = `<div style="font-size:0.7rem; color:var(--gold); margin-bottom:5px;">Recenti:</div>`;
+            r.forEach(code => { list.innerHTML += `<span class="room-chip" onclick="document.getElementById('camp-code').value='${code}'">${code} <span class="del-room" onclick="event.stopPropagation(); removeRecent('${code}')">×</span></span>`; });
+        } else { box.classList.add('hidden'); }
+    }
+    function removeRecent(code) {
+        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        r = r.filter(x => x !== code); localStorage.setItem('recent_rooms', JSON.stringify(r)); updateRecentUI();
+    }
+    function openSettings() { document.getElementById('set-hp').value = me.hpMax; document.getElementById('set-ac').value = me.ac; document.getElementById('modal-settings').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
+    function saveSettings() {
+        const nhp = parseInt(document.getElementById('set-hp').value) || me.hpMax;
+        const nac = parseInt(document.getElementById('set-ac').value) || me.ac;
+        me.hpMax = nhp; me.hp = Math.min(me.hp, nhp); me.ac = nac;
+        if(me.role === 'player') campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: nhp, ac: nac });
+        closeSettings();
+    }
+    function sendMsg() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        const lang = document.getElementById('current-lang').value;
+        if(!text) return;
+        let fromName = me.name, fromPhoto = me.photo, to = "ALL";
+        if(me.role === 'master') {
+            const sender = document.getElementById('sender-choice').value;
+            if(sender !== "MASTER") { fromName = sender; fromPhoto = cachedNPCs[sender].photo; }
+            const recipient = document.getElementById('msg-recipient').value;
+            if(recipient === "MULTI") {
+                to = Array.from(document.querySelectorAll('.multi-dest:checked')).map(c => c.value);
+                if(to.length === 0) to = "ALL";
+            } else to = recipient;
+        } else to = document.getElementById('player-msg-recipient').value;
+        campaignRef.child('messages').push({ from: fromName, photo: fromPhoto, text: text, lang: lang, to: to, time: firebase.database.ServerValue.TIMESTAMP });
+        input.value = "";
+    }
     function openInitModal() {
         document.getElementById('modal-init').style.display = 'flex';
         const list = document.getElementById('init-list-container');
         list.innerHTML = "";
-        campaignRef.child('players').once('value', pSnap => {
-            pSnap.forEach(p => {
-                list.innerHTML += `<div style="margin-bottom:5px;">${p.val().name}: <input type="number" class="init-val" data-name="${p.val().name}" data-npc="false" style="width:60px;"></div>`;
+        campaignRef.once('value', snap => {
+            const data = snap.val() || {};
+            if(data.players) Object.values(data.players).forEach(p => {
+                list.innerHTML += `<div style="margin-bottom:5px;">${p.name}: <input type="number" class="init-val" data-name="${p.name}" data-npc="false" style="width:60px;"></div>`;
             });
-            campaignRef.child('npcs').once('value', nSnap => {
-                nSnap.forEach(n => {
-                    list.innerHTML += `<div style="margin-bottom:5px; color:red;">${n.val().name}: <input type="number" class="init-val" data-name="${n.val().name}" data-npc="true" style="width:60px;"></div>`;
-                });
+            if(data.npcs) Object.values(data.npcs).forEach(n => {
+                list.innerHTML += `<div style="margin-bottom:5px; color:red;">${n.name}: <input type="number" class="init-val" data-name="${n.name}" data-npc="true" style="width:60px;"></div>`;
             });
         });
     }
-
     function confirmIniziativa() {
         const results = Array.from(document.querySelectorAll('.init-val')).map(i => ({
-            name: i.dataset.name,
-            val: parseInt(i.value) || 0,
-            isNPC: i.dataset.npc === "true"
+            name: i.dataset.name, val: parseInt(i.value) || 0, isNPC: i.dataset.npc === "true"
         })).sort((a,b) => b.val - a.val);
-
         let text = "⚔️ **ORDINE INIZIATIVA:**\n";
         results.forEach((r, idx) => { text += `${idx+1}. ${r.name} (${r.val})\n`; });
-        
-        campaignRef.child('messages').push({
-            from: "SISTEMA",
-            photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-            text: text,
-            lang: "Comune",
-            to: "ALL",
-            time: firebase.database.ServerValue.TIMESTAMP
-        });
+        campaignRef.child('messages').push({ from: "SISTEMA", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", text: text, lang: "Comune", to: "ALL", time: firebase.database.ServerValue.TIMESTAMP });
         campaignRef.child('round').set(1);
         document.getElementById('modal-init').style.display = 'none';
     }
-
-    function nextRound() { campaignRef.child('round').set(currentRound + 1); }
-    function endCombat() { if(confirm("Vuoi resettare l'iniziativa e i round?")) campaignRef.child('round').set(0); }
 </script>
-
 </body>
 </html>
