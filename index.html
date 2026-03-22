@@ -34,7 +34,16 @@
         .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
         input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
         
-        #game-ui { display: none; flex-direction: column; height: 100vh; overflow: hidden; overscroll-behavior: none; }
+        #game-ui { 
+    display: none; 
+    flex-direction: column; 
+    height: 100dvh; /* Cambiato da 100vh a 100dvh per non tagliare la chat */
+    width: 100%;
+    position: fixed; /* Impedisce alla UI di spostarsi */
+    top: 0;
+    left: 0;
+    overflow: hidden; 
+}
         header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; }
         .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
         
@@ -61,7 +70,17 @@
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
         .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
         
-        #chat-flow { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+        #chat-flow { 
+    flex: 1; 
+    min-height: 0; /* Permette al flex di restringersi correttamente se serve */
+    overflow-y: auto; 
+    overflow-x: hidden; 
+    padding: 10px; 
+    background: rgba(0,0,0,0.3); 
+    overscroll-behavior-y: none; /* Cambiato in none per uccidere il pull-to-refresh */
+    -webkit-overflow-scrolling: touch; 
+    touch-action: pan-y; 
+}
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
         .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
@@ -498,22 +517,26 @@
 function preventPullRefresh() {
     const chat = document.getElementById('chat-flow');
     
-    // 1. Gestione del tocco iniziale
     chat.addEventListener('touchstart', () => {
-        const top = chat.scrollTop;
-        const totalScroll = chat.scrollHeight;
-        const currentScroll = top + chat.offsetHeight;
-
-        // TRUCCO DEL PIXEL: Se sei a 0, il browser abilita il refresh.
-        // Spostandoti a 1px, il browser crede che tu stia già scorrendo e lo disabilita.
-        if (top === 0) {
+        // Trucco del pixel: mai stare a zero
+        if (chat.scrollTop === 0) {
             chat.scrollTop = 1;
-        } 
-        // Impedisce il rimbalzo elastico anche sul fondo
-        else if (currentScroll === totalScroll) {
-            chat.scrollTop = top - 1;
+        }
+        // Evita il blocco anche sul fondo
+        if (chat.scrollTop + chat.offsetHeight === chat.scrollHeight) {
+            chat.scrollTop = chat.scrollTop - 1;
         }
     }, { passive: true });
+
+    chat.addEventListener('touchmove', (e) => {
+        const top = chat.scrollTop;
+        // Se l'utente è in cima (1px) e prova a tirare verso il basso (clientY aumenta)
+        if (top <= 1 && e.touches[0].clientY > 0) {
+            // BLOCCA il comando nativo del browser (la rotellina)
+            if (e.cancelable) e.preventDefault();
+        }
+    }, { passive: false }); // FONDAMENTALE: deve essere false per poter usare preventDefault
+}
 
     // 2. Blocco della propagazione
     chat.addEventListener('touchmove', (e) => {
