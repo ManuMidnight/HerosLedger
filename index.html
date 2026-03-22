@@ -109,8 +109,30 @@
         }
         
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
-        .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
-        .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
+        .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }.chat-text { 
+    background: rgba(255,255,255,0.05); 
+    padding: 6px 10px; 
+    border-radius: 5px; 
+    max-width: 80%; 
+    font-size: 0.9rem; 
+    border-left: 3px solid transparent; /* Aumentato a 3px per maggiore visibilità */
+    transition: all 0.2s; 
+}
+
+/* Grassetto automatico per Danni e Cure */
+.chat-text[style*="color: rgb(255, 68, 68)"], 
+.chat-text[style*="color: #ff4444"] { 
+    border-left-color: #ff4444 !important; 
+    font-weight: bold;
+    background: rgba(255, 68, 68, 0.1); /* Leggero sfondo rossastro */
+}
+
+.chat-text[style*="color: rgb(68, 68, 255)"], 
+.chat-text[style*="color: #4444ff"] { 
+    border-left-color: #4444ff !important; 
+    font-weight: bold;
+    background: rgba(68, 68, 255, 0.1); /* Leggero sfondo bluastro */
+}
         .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); }
         .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; }
         
@@ -710,34 +732,51 @@
         showManageAction('CONDIZIONI');
     }
 
-    function applyManageAction() {
+function applyManageAction() {
         const mode = document.getElementById('manage-value').dataset.mode;
         const val = parseInt(document.getElementById('manage-value').value) || 0;
         let p = cachedNPCs[currentTargetPG];
         let newHp = p.hp;
-        if(mode === 'DANNI') { newHp -= val; }
-        else if(mode === 'GUARIGIONE') { newHp = Math.min(p.hpMax, newHp + val); }
+        
+        if(mode === 'DANNI') { 
+            newHp -= val; 
+        } else if(mode === 'GUARIGIONE') { 
+            newHp = Math.min(p.hpMax, newHp + val); 
+        }
+        
         if(newHp < 0) newHp = 0;
         
         let customMsg = "";
-        if(mode === 'DANNI' && newHp <= 0) {
-            if(p.type === 'PC') {
-                customMsg = `${p.name} subisce ${val} danni, PF Attuali 0/${p.hpMax}. ${p.name} cade privo di sensi.`;
+        if(mode === 'DANNI') {
+            if(newHp <= 0) {
+                // Messaggio specifico per morte/svenimento
+                customMsg = `${p.name} subisce ${val} Danni. PF Attuali 0/${p.hpMax}. ${p.type === 'PC' ? 'Cade privo di sensi!' : 'È morto 💀'}`;
             } else {
-                customMsg = `${p.name} subisce ${val} danni. ${p.name} è morto 💀.`;
+                // Messaggio richiesto per danni
+                customMsg = `${p.name} subisce ${val} Danni. PF Attuali ${newHp}/${p.hpMax}.`;
             }
-        } else {
-            customMsg = `${p.name} ${mode === 'DANNI' ? 'subisce' : 'riceve'} ${val} PF. (Attuali: ${newHp})`;
+        } else if(mode === 'GUARIGIONE') {
+            // Messaggio richiesto per guarigione
+            customMsg = `${p.name} recupera ${val} Punti Ferita. PF Attuali ${newHp}/${p.hpMax}.`;
         }
 
         const dmName = me.role === 'master' ? me.name : "Dungeon Master";
 
+        // Aggiorna Database
         campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
+        
+        // Invia Messaggio in Chat
         campaignRef.child('messages').push({
-            sender: dmName, senderRole: 'master', photo: me.photo,
+            sender: dmName, 
+            senderRole: 'master', 
+            photo: me.photo,
             text: customMsg,
-            lang: "Comune", to: 'ALL', time: Date.now(), type: mode === 'DANNI' ? 'damage' : 'heal'
+            lang: "Comune", 
+            to: 'ALL', 
+            time: Date.now(), 
+            type: mode === 'DANNI' ? 'damage' : 'heal'
         });
+        
         closeManage();
     }
 
