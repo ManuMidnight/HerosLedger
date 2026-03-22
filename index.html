@@ -14,14 +14,16 @@
     <style>
         :root { --wood: #3e2723; --stone: #424242; --amber: #ffca28; --gold: #b8860b; --parchment: #f5e1b6; }
         
-        /* CORREZIONE REFRESH: overscroll-behavior-y: contain blocca il pull-to-refresh sui browser mobili */
+        /* CORREZIONE REFRESH DEFINITIVA E BLOCCO SCROLL DELLA PAGINA MADRE */
         html, body { 
-            overscroll-behavior-y: none; 
-            -webkit-overflow-scrolling: touch; 
+            overscroll-behavior: none !important; 
+            -webkit-overflow-scrolling: auto; 
             margin: 0; 
-            height: 100%;
-            weight: 100%;
+            height: 100%; 
+            width: 100%;
             position: fixed; 
+            top: 0;
+            left: 0;
             display: flex; 
             flex-direction: column; 
             overflow: hidden; 
@@ -34,16 +36,19 @@
         .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
         input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
         
+        /* FIX CHAT TAGLIATA CON 100dvh E BLOCCO UI */
         #game-ui { 
-    display: none; 
-    flex-direction: column; 
-    height: 100dvh; /* Cambiato da 100vh a 100dvh per non tagliare la chat */
-    width: 100%;
-    position: fixed; /* Impedisce alla UI di spostarsi */
-    top: 0;
-    left: 0;
-    overflow: hidden; 
-}
+            display: none; 
+            flex-direction: column; 
+            height: 100dvh; 
+            width: 100vw;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow: hidden; 
+            overscroll-behavior: none; 
+        }
+
         header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; }
         .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
         
@@ -70,17 +75,19 @@
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
         .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
         
+        /* ISOLAMENTO CHAT: Aggiunto min-height: 0 per flessibilità */
         #chat-flow { 
-    flex: 1; 
-    min-height: 0; /* Permette al flex di restringersi correttamente se serve */
-    overflow-y: auto; 
-    overflow-x: hidden; 
-    padding: 10px; 
-    background: rgba(0,0,0,0.3); 
-    overscroll-behavior-y: none; /* Cambiato in none per uccidere il pull-to-refresh */
-    -webkit-overflow-scrolling: touch; 
-    touch-action: pan-y; 
-}
+            flex: 1; 
+            min-height: 0; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 10px; 
+            background: rgba(0,0,0,0.3); 
+            overscroll-behavior-y: none; 
+            -webkit-overflow-scrolling: touch; 
+            touch-action: pan-y; 
+        }
+        
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
         .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
@@ -102,7 +109,6 @@
         .manage-option:hover { background: #555; }
         .cond-list-item { padding: 5px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; color: white; }
         
-        /* CORREZIONE VISIBILITÀ: aggiunti colore bianco e font-size */
         .lang-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; color: white; font-size: 0.9rem; }
         .lang-row input { flex-shrink: 0; margin: 0; vertical-align: middle; width: 18px; height: 18px; }
     </style>
@@ -393,10 +399,8 @@
             initData.push({ name: name, val: val });
         });
         
-        // Ordina in modo decrescente (dal più alto al più basso)
         initData.sort((a, b) => b.val - a.val);
         
-        // Costruisci il messaggio da inviare in chat
         let initText = "⚔️ <strong>Inizia il combattimento! Ordine di Iniziativa:</strong> ⚔️<br>";
         initData.forEach((item, index) => {
             initText += `${index + 1}) ${item.name}, iniziativa ${item.val}<br>`;
@@ -492,7 +496,7 @@
 
         if(me.role === 'master') { 
             me.langs = [...ALL_LANGS]; 
-            document.getElementById('btn-settings').style.display = 'none'; // Nascondi ingranaggio al Master
+            document.getElementById('btn-settings').style.display = 'none';
         }
         const lSelect = document.getElementById('current-lang');
         lSelect.innerHTML = "";
@@ -514,39 +518,41 @@
         preventPullRefresh();
     }
 
-function preventPullRefresh() {
-    const chat = document.getElementById('chat-flow');
-    
-    chat.addEventListener('touchstart', () => {
-        // Trucco del pixel: mai stare a zero
-        if (chat.scrollTop === 0) {
-            chat.scrollTop = 1;
-        }
-        // Evita il blocco anche sul fondo
-        if (chat.scrollTop + chat.offsetHeight === chat.scrollHeight) {
-            chat.scrollTop = chat.scrollTop - 1;
-        }
-    }, { passive: true });
+    // IL BLOCCO DEFINITIVO DEL REFRESH
+    function preventPullRefresh() {
+        // 1. Blocco Globale: Impedisce lo scroll di pagina intercettando i tocchi non scrollabili
+        document.addEventListener('touchmove', function(e) {
+            const target = e.target;
+            const scrollable = target.closest('#chat-flow, .modal-content, #lang-selection, #npc-lang-selection, #multi-selector, .vault-container, #party-bar');
+            
+            // Se l'utente tocca un'area non fatta per scorrere, si blocca l'azione
+            if (!scrollable) {
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
 
-    chat.addEventListener('touchmove', (e) => {
-        const top = chat.scrollTop;
-        // Se l'utente è in cima (1px) e prova a tirare verso il basso (clientY aumenta)
-        if (top <= 1 && e.touches[0].clientY > 0) {
-            // BLOCCA il comando nativo del browser (la rotellina)
-            if (e.cancelable) e.preventDefault();
-        }
-    }, { passive: false }); // FONDAMENTALE: deve essere false per poter usare preventDefault
-}
+            // Se proviamo a trascinare verso il basso ma siamo già a 0 (periferia refresh)
+            const isScrollingDown = e.touches[0].clientY > (scrollable.lastY || e.touches[0].clientY);
+            scrollable.lastY = e.touches[0].clientY;
 
-    // 2. Blocco della propagazione
-    chat.addEventListener('touchmove', (e) => {
-        // Se il contenuto è scorrevole, impedisce al tocco di "uscire" dalla chat
-        // ed evitare che arrivi al body, che è il vero responsabile del refresh
-        if (chat.offsetHeight < chat.scrollHeight) {
-            e.stopPropagation();
-        }
-    }, { passive: true });
-}
+            if (scrollable.scrollTop <= 1 && isScrollingDown) {
+                if (e.cancelable) e.preventDefault(); // Niente rotellina!
+            }
+            
+        }, { passive: false });
+
+        // 2. Trucco del Pixel sugli elementi Scrollabili (non tocca mai lo zero)
+        document.addEventListener('touchstart', function(e) {
+            const scrollable = e.target.closest('#chat-flow, .modal-content, #lang-selection, #npc-lang-selection, #multi-selector, .vault-container, #party-bar');
+            if (scrollable) {
+                scrollable.lastY = e.touches[0].clientY;
+                if (scrollable.scrollTop <= 0) scrollable.scrollTop = 1;
+                if (scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight) {
+                    scrollable.scrollTop = scrollable.scrollHeight - scrollable.clientHeight - 1;
+                }
+            }
+        }, { passive: true });
+    }
 
     let syncJoinTime = 0;
     function setupSync() {
@@ -565,7 +571,6 @@ function preventPullRefresh() {
             if(pSel) pSel.innerHTML = '<option value="ALL">A: TUTTI</option>';
             if(multi) multi.innerHTML = "";
             Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
-                // MODIFICA: Assicura che la foto corretta venga recuperata per i PNG o giocatori
                 const characterPhoto = p.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
                 if(me.role === 'master' && (p.type === 'NPC' || p.type === 'BOSS')) senderChoice.innerHTML += `<option value="${p.name}">Parla come: ${p.name}</option>`;
@@ -582,8 +587,13 @@ function preventPullRefresh() {
                 const skull = p.hp <= 0 ? "💀" : "";
                 let condHtml = "";
                 if(p.cond) p.cond.split(",").filter(c => c.trim() !== "").forEach(c => condHtml += `<span class="cond-badge">${c}</span>`);
+                
                 let showStats = (p.type === 'PC' || me.role === 'master');
-                let stats = showStats ? `<br><small style="color:green; cursor:pointer" onclick="openManagePG('${p.name}')">
+                
+                // MODIFICA: Solo il Master ha il puntatore cliccabile sulle stats
+                let cursorStyle = me.role === 'master' ? 'cursor:pointer' : '';
+                
+                let stats = showStats ? `<br><small style="color:green; ${cursorStyle}" onclick="openManagePG('${p.name}')">
                              ${p.info || ''} | ${p.hp}/${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small style="color:green">${p.info || ''}</small>`;
                 if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
                 
@@ -607,7 +617,6 @@ function preventPullRefresh() {
             const displayMsg = knowsLang ? m.text : translateText(m.text, m.lang);
             const isForMe = (me.role === 'master' || m.to === 'ALL' || m.to === me.name || m.sender === me.name || (Array.isArray(m.to) && m.to.includes(me.name)));
             if(isForMe) {
-                // MODIFICA: La campana suona solo se il messaggio è arrivato dopo il caricamento iniziale
                 const isNewMsg = m.time > syncJoinTime + 500;
                 if (isNewMsg && m.sender !== me.name) playTavernBell();
                 
@@ -636,8 +645,9 @@ function preventPullRefresh() {
         });
     }
 
+    // MODIFICA: SOLO IL MASTER PUÒ APRIRE LA GESTIONE!
     function openManagePG(name) {
-        if(me.role !== 'master' && name !== me.name) return;
+        if(me.role !== 'master') return; // Se non sei master, il click muore qui.
         currentTargetPG = name;
         document.getElementById('manage-title').innerText = "Gestione " + name;
         document.getElementById('modal-manage').style.display = 'flex';
