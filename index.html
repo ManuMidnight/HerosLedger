@@ -16,14 +16,16 @@
         
         /* CORREZIONE REFRESH: overscroll-behavior-y: contain blocca il pull-to-refresh sui browser mobili */
         html, body { 
-            overscroll-behavior-y: contain; 
+            overscroll-behavior-y: none; 
             -webkit-overflow-scrolling: touch; 
             margin: 0; 
-            height: 100vh; 
+            height: 100%;
+            weight: 100%;
+            position: fixed; 
             display: flex; 
             flex-direction: column; 
             overflow: hidden; 
-            touch-action: pan-y; 
+            touch-action: none; 
         }
 
         body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; }
@@ -59,7 +61,7 @@
         .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
         .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
         
-        #chat-flow { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+        #chat-flow { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
         .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
         .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }
         .chat-text { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px; max-width: 80%; font-size: 0.9rem; border-left: 2px solid transparent; }
@@ -493,15 +495,35 @@
         preventPullRefresh();
     }
 
-    function preventPullRefresh() {
-        const chat = document.getElementById('chat-flow');
-        let startY = 0;
-        chat.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
-        chat.addEventListener('touchmove', e => {
-            if (chat.scrollTop === 0 && e.touches[0].clientY > startY) e.preventDefault();
-            startY = e.touches[0].clientY;
-        }, { passive: false });
-    }
+function preventPullRefresh() {
+    const chat = document.getElementById('chat-flow');
+    
+    // 1. Gestione del tocco iniziale
+    chat.addEventListener('touchstart', () => {
+        const top = chat.scrollTop;
+        const totalScroll = chat.scrollHeight;
+        const currentScroll = top + chat.offsetHeight;
+
+        // TRUCCO DEL PIXEL: Se sei a 0, il browser abilita il refresh.
+        // Spostandoti a 1px, il browser crede che tu stia già scorrendo e lo disabilita.
+        if (top === 0) {
+            chat.scrollTop = 1;
+        } 
+        // Impedisce il rimbalzo elastico anche sul fondo
+        else if (currentScroll === totalScroll) {
+            chat.scrollTop = top - 1;
+        }
+    }, { passive: true });
+
+    // 2. Blocco della propagazione
+    chat.addEventListener('touchmove', (e) => {
+        // Se il contenuto è scorrevole, impedisce al tocco di "uscire" dalla chat
+        // ed evitare che arrivi al body, che è il vero responsabile del refresh
+        if (chat.offsetHeight < chat.scrollHeight) {
+            e.stopPropagation();
+        }
+    }, { passive: true });
+}
 
     let syncJoinTime = 0;
     function setupSync() {
