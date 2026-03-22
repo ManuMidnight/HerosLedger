@@ -747,25 +747,38 @@ function applyManageAction() {
         if(newHp < 0) newHp = 0;
         
         let customMsg = "";
+        const isPC = (p.type === 'PC'); // Controlla se è un giocatore o un mostro
+
         if(mode === 'DANNI') {
             if(newHp <= 0) {
-                // Messaggio specifico per morte/svenimento
-                customMsg = `${p.name} subisce ${val} Danni. PF Attuali 0/${p.hpMax}. ${p.type === 'PC' ? 'Cade privo di sensi!' : 'È morto 💀'}`;
+                // Messaggio di morte/svenimento (uguale per entrambi ma con nomi diversi)
+                if(isPC) {
+                    customMsg = `${p.name} subisce ${val} Danni. PF Attuali 0/${p.hpMax}. ${p.name} cade privo di sensi!`;
+                } else {
+                    customMsg = `${p.name} subisce ${val} Danni. ${p.name} è morto 💀`;
+                }
             } else {
-                // Messaggio richiesto per danni
-                customMsg = `${p.name} subisce ${val} Danni. PF Attuali ${newHp}/${p.hpMax}.`;
+                // Messaggio danni standard
+                if(isPC) {
+                    customMsg = `${p.name} subisce ${val} Danni. PF Attuali ${newHp}/${p.hpMax}.`;
+                } else {
+                    // Per NPC non mostriamo i PF totali
+                    customMsg = `${p.name} subisce ${val} Danni.`;
+                }
             }
         } else if(mode === 'GUARIGIONE') {
-            // Messaggio richiesto per guarigione
-            customMsg = `${p.name} recupera ${val} Punti Ferita. PF Attuali ${newHp}/${p.hpMax}.`;
+            // Messaggio guarigione standard
+            if(isPC) {
+                customMsg = `${p.name} recupera ${val} Punti Ferita. PF Attuali ${newHp}/${p.hpMax}.`;
+            } else {
+                // Per NPC non mostriamo i PF totali
+                customMsg = `${p.name} recupera ${val} Punti Ferita.`;
+            }
         }
 
         const dmName = me.role === 'master' ? me.name : "Dungeon Master";
 
-        // Aggiorna Database
         campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
-        
-        // Invia Messaggio in Chat
         campaignRef.child('messages').push({
             sender: dmName, 
             senderRole: 'master', 
