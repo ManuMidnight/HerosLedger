@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>D&amp;D Taverna - Hero's Ledger</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,8 +49,28 @@
             overscroll-behavior: none; 
         }
 
-        header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; }
-        .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
+        header { 
+    background: var(--stone); 
+    color: var(--amber); 
+    /* Aggiunge il padding normale + lo spazio della tacca del telefono */
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px 8px; 
+    text-align: center; 
+    border-bottom: 2px solid var(--gold); 
+    position: relative; 
+}
+        .exit-btn { 
+    position: absolute; 
+    left: 10px; 
+    /* Si allinea dinamicamente alla nuova altezza dell'header */
+    top: calc(8px + env(safe-area-inset-top, 0px)); 
+    background: #b71c1c; 
+    color: white; 
+    border: none; 
+    padding: 4px 8px; 
+    border-radius: 4px; 
+    font-size: 0.7rem; 
+    cursor: pointer; 
+}
         
         .vault-container { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid #444; }
         .vault-card { flex-shrink: 0; width: 60px; text-align: center; cursor: pointer; position: relative; }
