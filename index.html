@@ -3,76 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>D&amp;D Taverna - Hero's Ledger</title>
+    <title>D&D Taverna - Hero's Ledger</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="D&amp;D Taverna">
+    <meta name="apple-mobile-web-app-title" content="D&D Taverna">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/149/149071.png">
     <meta name="theme-color" content="#3e2723">
 
     <style>
         :root { --wood: #3e2723; --stone: #424242; --amber: #ffca28; --gold: #b8860b; --parchment: #f5e1b6; }
         
-        /* MODIFICA: Blocco Refresh e stabilizzazione pagina */
-        html, body { 
-            overflow: hidden; 
+        html { overflow: hidden; height: 100%; }
+
+        body { 
+            font-family: 'Georgia', serif; 
+            background-color: var(--wood); 
+            color: #d7ccc8; 
+            margin: 0; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
             overscroll-behavior-y: none; 
-            height: 100%;
-            position: fixed;
+            position: fixed; 
             width: 100%;
-            margin: 0;
         }
 
-        body { font-family: 'Georgia', serif; background-color: var(--wood); color: #d7ccc8; display: flex; flex-direction: column; }
-        
         .login-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; overflow-y: auto; }
         .scroll-box { background: #212121; padding: 20px; border: 4px solid var(--stone); border-radius: 8px; width: 85%; max-width: 350px; text-align: center; margin: 20px; }
         input, select { background: #424242; color: white; border: 1px solid #757575; padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; font-size: 16px; border-radius: 4px; }
-        #game-ui { display: none; flex-direction: column; height: 100vh; }
+        
+        #game-ui { display: none; flex-direction: column; height: 100vh; width: 100%; }
         header { background: var(--stone); color: var(--amber); padding: 8px; text-align: center; border-bottom: 2px solid var(--gold); position: relative; flex-shrink: 0; }
         .exit-btn { position: absolute; left: 10px; top: 8px; background: #b71c1c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
         
-        .vault-container { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; border-bottom: 1px solid #444; }
-        .vault-card { flex-shrink: 0; width: 60px; text-align: center; cursor: pointer; position: relative; }
-        .vault-card img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold); object-fit: cover; }
-        
-        .settings-btn { position: absolute; right: 10px; top: 8px; background: none; border: none; color: var(--amber); font-size: 1.2rem; cursor: pointer; }
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
-        .modal-content { background: #212121; padding: 20px; border-radius: 8px; border: 2px solid var(--gold); width: 300px; max-height: 90vh; overflow-y: auto; }
-        
-        #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; flex-shrink: 0; }
-        .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
+        #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 85px; align-items: center; flex-shrink: 0; overscroll-behavior-x: contain; }
+        .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 8px; border-radius: 8px; min-width: 150px; display: flex; align-items: center; gap: 10px; position: relative; flex-shrink: 0; }
         .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
         
-        .avatar-container { position: relative; width: 35px; height: 35px; }
-        .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
-        .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
-        
-        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior-y: contain; }
-        .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); flex-shrink: 0; }
-        .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; }
-        
-        /* MODIFICA: Allineamento lingue e quadratini */
-        .check-item { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-bottom: 5px; 
-            color: white; 
-            font-size: 0.9rem; 
-            cursor: pointer; 
-            text-align: left;
-        }
-        .check-item input { 
-            margin: 0; 
-            width: 18px; 
-            height: 18px; 
-            flex-shrink: 0; 
-        }
+        .tag-info { display: flex; flex-direction: column; flex: 1; }
+        .tag-name { font-weight: bold; font-size: 0.85rem; margin-bottom: 2px; }
+        .tag-sub { font-size: 0.65rem; opacity: 0.8; margin-bottom: 4px; }
+        .tag-stats { display: flex; gap: 8px; font-size: 0.75rem; font-weight: bold; }
 
+        .avatar-container { position: relative; width: 40px; height: 40px; flex-shrink: 0; }
+        .avatar-circle { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
+
+        #chat-flow { flex: 1; overflow-y: auto; padding: 10px; background: rgba(0,0,0,0.3); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+        
+        .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: white; font-size: 0.9rem; cursor: pointer; text-align: left; }
+        .check-item input { margin: 0; width: 18px; height: 18px; flex-shrink: 0; }
+
+        .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); flex-shrink: 0; }
+        .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; display: block; }
+        
         .hidden { display: none !important; }
-        .lang-select { background: #3e2723; color: var(--amber); border: 1px solid var(--gold); font-size: 0.7rem; padding: 2px; margin-bottom: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -80,49 +67,156 @@
 <div id="login-ui" class="login-overlay">
     <div class="scroll-box">
         <h2 style="color:var(--amber);">🍷 Registro</h2>
-        <div id="pg-vault" class="vault-container"></div>
         <input type="text" id="user-name" placeholder="Nome Personaggio">
         <input type="text" id="camp-code" placeholder="Codice Stanza">
         
-        <label for="user-photo" class="btn-taverna" style="display:block; margin: 5px 0; padding: 10px; background:#444; color:white; border: 1px solid #757575;">SELEZIONA FOTO</label>
-        <input type="file" id="user-photo" accept="image/*" style="display:none">
-        
-        <select id="user-role" onchange="document.getElementById('p-extra').classList.toggle('hidden', this.value==='master')">
-            <option value="player">Giocatore</option>
-            <option value="master">Dungeon Master</option>
-        </select>
         <div id="p-extra">
             <input type="text" id="p-race-class" placeholder="Razza e Classe">
             <div style="display:flex; gap:5px;">
                 <input type="number" id="p-hp" placeholder="PF Max">
                 <input type="number" id="p-ac" placeholder="CA">
             </div>
-            <p style="font-size: 0.8rem; color: var(--amber); margin: 5px 0;">Linguaggi:</p>
-            <div id="lang-selection" style="text-align: left; font-size: 0.8rem; height: 80px; overflow-y: scroll; background: #333; padding: 5px;"></div>
+            <p style="font-size: 0.8rem; color: var(--amber); margin: 10px 0 5px 0;">Linguaggi:</p>
+            <div id="lang-selection" style="height: 100px; overflow-y: auto; background: #333; padding: 8px; border-radius: 4px; overscroll-behavior: contain;"></div>
         </div>
-        <button class="btn-taverna" style="width:100%; margin-top:10px;" onclick="joinGame()">ENTRA</button>
+
+        <select id="user-role">
+            <option value="player">Giocatore</option>
+            <option value="master">Dungeon Master</option>
+        </select>
+        
+        <button class="btn-taverna" style="margin-top:15px;" onclick="joinGame()">ENTRA NELLA TAVERNA</button>
     </div>
 </div>
 
 <div id="game-ui">
     <header>
-        <button class="exit-btn" onclick="location.reload()">ESCI</button>
+        <button class="exit-btn" onclick="confirmExit()">ESCI</button>
         <span id="display-name"></span> | <strong id="display-code"></strong>
-        <button id="btn-settings" class="settings-btn" onclick="openSettings()">⚙️</button>
     </header>
     <div id="party-bar"></div>
     <div id="chat-flow"></div>
     <div class="input-area">
-        <select id="current-lang" class="lang-select"></select>
-        <form onsubmit="sendMsg(); return false;" style="display:flex; gap:5px; width:100%;">
-            <input type="text" id="msg-input" placeholder="Scrivi qui..." autocomplete="off">
-            <button type="submit" class="btn-taverna">OK</button>
+        <form onsubmit="sendMsg(); return false;" style="display:flex; gap:5px;">
+            <input type="text" id="msg-input" placeholder="Parla..." autocomplete="off">
+            <button type="submit" class="btn-taverna" style="width: auto;">OK</button>
         </form>
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
 <script>
-    // Tutta la logica Firebase e le funzioni originali rimangono qui sotto senza modifiche
+    // --- CONFIGURAZIONE FIREBASE (Inserisci i tuoi dati qui se diversi) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAm1BSUhkG5xylPVchP9tDsWfLXtR6-PdM",
+        authDomain: "hero-s-ledger-99340.firebaseapp.com",
+        databaseURL: "https://hero-s-ledger-99340-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "hero-s-ledger-99340",
+        storageBucket: "hero-s-ledger-99340.firebasestorage.app",
+        messagingSenderId: "745733175125",
+        appId: "1:745733175125:web:12a62b5dc3fe53cba0a1dc"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let campaignRef, me = { name: "", photo: "" };
+
+    const ALL_LANGS = ["Comune", "Elfico", "Nanico", "Gigante", "Gnomesco", "Goblin", "Halfling", "Orchesco", "Abissale", "Celestiale", "Draconico", "Infernale", "Silvano", "Sottocomune"];
+
+    window.onload = () => {
+        const div = document.getElementById('lang-selection');
+        ALL_LANGS.forEach(l => {
+            div.innerHTML += `<label class="check-item"><input type="checkbox" value="${l}" ${l==='Comune'?'checked':''}> ${l}</label>`;
+        });
+    };
+
+    function confirmExit() {
+        if(confirm("Vuoi uscire dalla Taverna?")) {
+            location.reload();
+        }
+    }
+
+    function createTag(data, type) {
+        const div = document.createElement('div');
+        div.className = `pg-tag ${type==='npc'?'npc-tag':''}`;
+        const perc = Math.max(0, Math.min(100, (data.hp / data.hpMax) * 100));
+        const color = perc > 50 ? '#4caf50' : perc > 20 ? '#ff9800' : '#f44336';
+        div.innerHTML = `
+            <div class="avatar-container">
+                <img src="${data.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-circle">
+                <div class="hp-overlay" style="background: ${color}; opacity: ${1 - (perc/100)}"></div>
+            </div>
+            <div class="tag-info">
+                <div class="tag-name">${data.name}</div>
+                <div class="tag-sub">${data.info || 'Avventuriero'}</div>
+                <div class="tag-stats"><span>❤️ ${data.hp}/${data.hpMax}</span><span>🛡️ ${data.ac}</span></div>
+            </div>`;
+        return div;
+    }
+
+    async function joinGame() {
+        const name = document.getElementById('user-name').value.trim();
+        const code = document.getElementById('camp-code').value.trim().toUpperCase();
+        if(!name || !code) return alert("Inserisci nome e codice stanza!");
+
+        me.name = name;
+        me.role = document.getElementById('user-role').value;
+        const hp = parseInt(document.getElementById('p-hp').value) || 10;
+        const ac = parseInt(document.getElementById('p-ac').value) || 10;
+        const info = document.getElementById('p-race-class').value;
+
+        campaignRef = db.ref('campaigns/' + code);
+        
+        if(me.role === 'player') {
+            await campaignRef.child('players').child(name).set({
+                name, hp, hpMax: hp, ac, info, online: true
+            });
+            campaignRef.child('players').child(name).onDisconnect().update({ online: false });
+        }
+
+        document.getElementById('login-ui').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-code').innerText = code;
+
+        listenData();
+    }
+
+    function listenData() {
+        campaignRef.child('players').on('value', snap => {
+            const bar = document.getElementById('party-bar');
+            bar.innerHTML = "";
+            const players = snap.val() || {};
+            Object.values(players).forEach(p => {
+                if(p.online) bar.appendChild(createTag(p, 'player'));
+            });
+        });
+
+        campaignRef.child('chat').limitToLast(30).on('value', snap => {
+            const flow = document.getElementById('chat-flow');
+            flow.innerHTML = "";
+            snap.forEach(child => {
+                const m = child.val();
+                const b = document.createElement('div');
+                b.style.margin = "5px 0";
+                b.innerHTML = `<strong>${m.sender}:</strong> ${m.text}`;
+                flow.appendChild(b);
+            });
+            flow.scrollTop = flow.scrollHeight;
+        });
+    }
+
+    function sendMsg() {
+        const input = document.getElementById('msg-input');
+        if(!input.value.trim()) return;
+        campaignRef.child('chat').push({
+            sender: me.name,
+            text: input.value,
+            time: Date.now()
+        });
+        input.value = "";
+    }
 </script>
 </body>
 </html>
