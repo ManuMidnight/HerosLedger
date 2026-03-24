@@ -153,6 +153,993 @@
         
         .lang-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; color: white; font-size: 0.9rem; }
         .lang-row input { flex-shrink: 0; margin: 0; vertical-align: middle; width: 18px; height: 18px; }
+/* Stili Multimedia e Master */
+.master-only { display: none; gap: 5px; align-items: center; }
+.chat-image-attachment { 
+    max-width: 200px; 
+    max-height: 200px; 
+    border-radius: 5px; 
+    margin-top: 8px; 
+    display: block; 
+    border: 1px solid var(--gold);
+}
+#modal-lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; }
+#lightbox-img { max-width: 95%; max-height: 80%; border: 2px solid var(--gold); border-radius: 8px; }
+.btn-rec { background: #b71c1c; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
+.recording-active { animation: pulse-red 1.5s infinite; background: red; }
+@keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); } 70% { box-shadow: 0 0 0 10px rgba(255,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); } }
+audio { max-width: 100%; height: 35px; margin-top: 8px; }
+.del-msg { color: #ff5252; cursor: pointer; margin-left: 10px; font-size: 0.9rem; opacity: 0.5; }
+    </style>
+</head>
+<body>
+
+<audio id="silent-wake-lock" loop>
+    <source src="data:audio/wav;base64,UklGRigAAABXQVZRTU9O" type="audio/wav">
+</audio>
+
+<div id="login-ui" class="login-overlay">
+    <div class="scroll-box">
+        <h2 style="color:var(--amber);">🍷 Registro</h2>
+        <div id="pg-vault" class="vault-container"></div>
+        <input type="text" id="user-name" placeholder="Nome Personaggio">
+        <input type="text" id="camp-code" placeholder="Codice Stanza">
+        <div id="recent-box" class="recent-rooms hidden"><div id="recent-list"></div></div>
+        
+        <label for="user-photo" class="btn-taverna" style="display:block; margin: 5px 0; padding: 10px; background:#444; color:white; border: 1px solid #757575;">SELEZIONA FOTO</label>
+        <input type="file" id="user-photo" accept="image/*" style="display:none">
+        
+        <select id="user-role" onchange="document.getElementById('p-extra').classList.toggle('hidden', this.value==='master')">
+            <option value="player">Giocatore</option>
+            <option value="master">Dungeon Master</option>
+        </select>
+        <div id="p-extra">
+            <input type="text" id="p-race-class" placeholder="Razza e Classe">
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="p-hp" placeholder="PF Max">
+                <input type="number" id="p-ac" placeholder="CA">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--amber); margin: 5px 0;">Linguaggi:</p>
+            <div id="lang-selection" style="text-align: left; font-size: 0.8rem; height: 80px; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; background: #333; padding: 5px;"></div>
+        </div>
+        <button class="btn-taverna" style="width:100%; margin-top:10px;" onclick="joinGame()">ENTRA</button>
+    </div>
+</div>
+
+<div id="game-ui">
+    <header>
+        <button class="exit-btn" onclick="exitTavern()">ESCI</button>
+        <span id="display-name"></span> | <strong id="display-code"></strong>
+        <span id="round-display" style="margin-left:10px; color:white; font-size:0.8rem;"></span>
+        <button id="btn-settings" class="settings-btn" onclick="openSettings()">⚙️</button>
+    </header>
+    <div id="master-panel" class="hidden" style="padding:5px; background: #2c1d1a; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+        <button onclick="openSpawnModal()" class="btn-taverna">➕ PNG</button>
+        <button onclick="clearChat()" class="btn-taverna" style="background:#5d4037; color:white;">🧹 PULISCI</button>
+        <button onclick="openInitModal()" class="btn-taverna" style="background:red; color:white;">⚔️ INIT</button>
+        <button onclick="nextRound()" id="btn-round" class="btn-taverna" style="background:var(--amber);">⌛ ROUND +1</button>
+        <button onclick="endCombat()" class="btn-taverna">🏳️ FINE</button>
+    </div>
+    <div id="party-bar"></div>
+    <div id="chat-flow"></div>
+    <div class="input-area">
+        <div id="master-only-ui" class="hidden">
+            <select id="sender-choice" onchange="filterLangsBySender(this.value)" style="color:var(--amber); background:#222; margin-bottom:5px; font-weight:bold;">
+                <option value="MASTER">Parla come: MASTER</option>
+            </select>
+            <select id="msg-recipient" onchange="updateWhisperUI(this.value)" style="color:white; font-size:0.8rem; margin-bottom:5px;">
+                <option value="ALL">Destinatario: TUTTI</option>
+                <option value="MULTI">SUSSURRO MULTIPLO</option>
+            </select>
+            <div id="multi-selector"></div>
+        </div>
+        <div id="player-whisper-ui" class="hidden">
+             <select id="player-msg-recipient" style="color:var(--amber); font-size:0.8rem; width:100%; margin-bottom:5px;">
+                <option value="ALL">A: TUTTI</option>
+             </select>
+        </div>
+        <select id="current-lang" class="lang-select"></select>
+        <form onsubmit="sendMsg(); return false;" style="display:flex; gap:5px; width:100%; align-items: center; padding: 5px;">
+    <span id="master-controls" class="master-only">
+        <label for="chat-photo" class="btn-taverna" style="background:#444; padding:10px; cursor:pointer;">📷</label>
+        <input type="file" id="chat-photo" accept="image/*" style="display:none">
+        <label for="chat-audio-file" class="btn-taverna" style="background:#444; padding:10px; cursor:pointer;">📁</label>
+        <input type="file" id="chat-audio-file" accept="audio/*" style="display:none">
+        <div id="btn-mic" class="btn-rec" onclick="toggleRecording()">🎤</div>
+    </span>
+
+    <input type="text" id="msg-input" placeholder="Scrivi..." autocomplete="off" style="flex-grow:1;">
+    <button type="submit" class="btn-taverna">OK</button>
+</form>
+    </div>
+</div>
+
+<div id="modal-spawn" class="modal">
+    <div class="modal-content">
+        <h3 style="color:var(--amber); margin:0 0 10px 0;">Genera PNG</h3>
+        <input type="text" id="npc-name" placeholder="Nome (es: Goblin)">
+        <input type="text" id="npc-title" placeholder="Titolo (es: Sentinella)">
+        
+        <select id="npc-type" style="margin-bottom:10px;">
+            <option value="NPC">NPC Classico</option>
+            <option value="BOSS">BOSS</option>
+        </select>
+
+        <div style="display:flex; gap:5px;">
+            <input type="number" id="npc-hp" placeholder="PF">
+            <input type="number" id="npc-ac" placeholder="CA">
+            <input type="number" id="npc-count" placeholder="Qtà" value="1">
+        </div>
+        <p style="font-size:0.7rem; color:var(--amber); margin:5px 0;">Lingue PNG:</p>
+        <div id="npc-lang-selection" style="text-align:left; font-size:0.7rem; height:80px; overflow-y:auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; background:#333; padding:5px; margin-bottom:10px;"></div>
+        
+        <label for="npc-photo" class="btn-taverna" style="display:block; text-align:center; background:#444; font-size:0.8rem; margin-bottom:10px;">CARICA FOTO PNG</label>
+        <input type="file" id="npc-photo" accept="image/*" style="display:none">
+        
+        <div style="display:flex; gap:5px;">
+            <button class="btn-taverna" style="flex:1" onclick="spawnNPC()">SPAWNA</button>
+            <button class="btn-taverna" style="flex:1; background:#b71c1c; color:white;" onclick="closeSpawnModal()">ANNULLA</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-init" class="modal">
+    <div class="modal-content">
+        <h3 style="color:var(--amber); margin-top:0;">Iniziativa</h3>
+        <div id="init-list-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 10px;"></div>
+        <button class="btn-taverna" style="width:100%;" onclick="confirmIniziativa()">⚔️ CONFERMA</button>
+        <button class="btn-taverna" style="width:100%; margin-top:5px; background:#b71c1c; color:white;" onclick="document.getElementById('modal-init').style.display='none'">ANNULLA</button>
+    </div>
+</div>
+
+<div id="modal-manage" class="modal">
+    <div class="modal-content">
+        <h3 id="manage-title" style="color:var(--amber); margin-top:0;">Gestione Personaggio</h3>
+        <div id="manage-main-menu">
+            <div class="manage-option" onclick="showManageAction('DANNI')">🔴 Danni</div>
+            <div class="manage-option" onclick="showManageAction('GUARIGIONE')">🔵 Guarigione</div>
+            <div class="manage-option" onclick="showManageAction('CONDIZIONI')">🟢 Condizioni</div>
+        </div>
+        <div id="manage-action-input" class="hidden">
+            <input type="number" id="manage-value" placeholder="Quantità...">
+            <button class="btn-taverna" style="width:100%; margin-top:5px;" onclick="applyManageAction()">APPLICA</button>
+        </div>
+        <div id="manage-conditions-list" class="hidden" style="text-align:left; margin-top:10px;"></div>
+        <button class="btn-taverna" style="width:100%; margin-top:15px; background:#b71c1c; color:white;" onclick="closeManage()">CHIUDI</button>
+    </div>
+</div>
+
+<div id="modal-settings" class="modal">
+    <div class="modal-content">
+        <h3 style="color:var(--amber); margin-top:0;">Aggiorna Statistiche</h3>
+        <input type="number" id="set-hp" placeholder="Nuovi PF Max">
+        <input type="number" id="set-ac" placeholder="Nuova CA">
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <button class="btn-taverna" style="flex:1" onclick="saveSettings()">SALVA</button>
+            <button class="btn-taverna" style="flex:1; background:#b71c1c; color:white;" onclick="closeSettings()">ANNULLA</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAm1BSUhkG5xylPVchP9tDsWfLXtR6-PdM",
+        authDomain: "hero-s-ledger-99340.firebaseapp.com",
+        databaseURL: "https://hero-s-ledger-99340-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "hero-s-ledger-99340",
+        storageBucket: "hero-s-ledger-99340.firebasestorage.app",
+        messagingSenderId: "745733175125",
+        appId: "1:745733175125:web:12a62b5dc3fe53cba0a1dc"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let campaignRef, me = { name: "", role: "", photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", hp: 10, hpMax: 10, ac: 10, info: "", langs: ["Comune"] };
+    let firstLoad = true;
+    let currentTargetPG = null;
+    let npcTempPhoto = null;
+    let cachedNPCs = {};
+    let currentRound = 0;
+
+    const ALL_LANGS = ["Comune", "Elfico", "Gigante", "Gnomesco", "Goblin", "Halfling", "Nanico", "Orchesco", "Abissale", "Celestiale", "Draconico", "Infernale", "Silvano", "Sottocomune"];
+    const CONDITIONS = ["Accecato", "Affascinato", "Afferrato", "Assordato", "Avvelenato", "Incapacitato", "Invisibile", "Paralizzato", "Pietrificato", "Prono", "Spaventato", "Stordito", "Trattenuto", "Indebolito"];
+
+    const DICTIONARY = {
+        "Orchesco": ["Grush", "nik", "terk", "ah", "nar", "bor", "zug"],
+        "Elfico": ["Elia", "val", "shannar", "mora", "lyth", "ae"],
+        "Nanico": ["Khazad", "dum", "baruk", "ai", "menu", "rok"],
+        "Draconico": ["Vith", "dur", "darastrix", "ignis", "irlyth"],
+        "Abissale": ["Gh’ul", "nak", "kazz", "shur", "t’ghul"],
+        "Infernale": ["Xas", "vile", "mor", "druk", "zehl"],
+        "Gigante": ["Thrym", "jotun", "haug", "stolt", "fisk"],
+        "Gnomesco": ["Boddynock", "glitter", "zook", "turen", "wrenn"],
+        "Goblin": ["Riz", "gark", "snut", "kol", "vark", "titch"],
+        "Halfling": ["Meri", "pippin", "leaf", "tea", "hill", "burr"],
+        "Celestiale": ["Aureos", "lux", "divin", "seraph", "ethereal"],
+        "Silvano": ["Faen", "leaf", "moss", "glade", "whisper", "dew"],
+        "Sottocomune": ["Zar", "drow", "under", "dark", "deep", "void"]
+    };
+
+    window.onload = () => {
+        const langDiv = document.getElementById('lang-selection');
+        const npcLangDiv = document.getElementById('npc-lang-selection');
+        ALL_LANGS.forEach(l => {
+            const checked = l === "Comune" ? "checked disabled" : "";
+            langDiv.innerHTML += `<label class="lang-row"><input type="checkbox" class="lang-check" value="${l}" ${checked}> ${l}</label>`;
+            npcLangDiv.innerHTML += `<label class="lang-row"><input type="checkbox" class="npc-lang-check" value="${l}" ${l==="Comune"?"checked":""}> ${l}</label>`;
+        });
+        
+        document.getElementById('npc-photo').onchange = async (e) => {
+            if(e.target.files[0]) npcTempPhoto = await compressImg(e.target.files[0]);
+        };
+
+        loadVault();
+        updateRecentUI();
+
+        const lastSession = JSON.parse(localStorage.getItem('last_session') || 'null');
+        if (lastSession && lastSession.code && lastSession.name) {
+            document.getElementById('user-name').value = lastSession.name;
+            document.getElementById('camp-code').value = lastSession.code;
+            document.getElementById('user-role').value = lastSession.role || 'player';
+            const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+            const fromVault = v.find(x => x.name === lastSession.name);
+            const src = fromVault || lastSession;
+            me.photo = src.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            me.info = src.info || '';
+            me.hpMax = parseInt(src.hpMax) || 10;
+            me.hp = me.hpMax;
+            me.ac = src.ac || 10;
+            me.langs = src.langs && src.langs.length ? src.langs : ["Comune"];
+            if (fromVault) {
+                document.getElementById('p-race-class').value = fromVault.info || '';
+                document.getElementById('p-hp').value = fromVault.hpMax || 10;
+                document.getElementById('p-ac').value = fromVault.ac || 10;
+                document.querySelectorAll('.lang-check').forEach(c => {
+                    if (c.value !== "Comune") c.checked = (fromVault.langs || []).includes(c.value);
+                });
+            } else if (lastSession.role !== 'master') {
+                document.getElementById('p-race-class').value = lastSession.info || '';
+                document.getElementById('p-hp').value = lastSession.hpMax || 10;
+                document.getElementById('p-ac').value = lastSession.ac || 10;
+                document.querySelectorAll('.lang-check').forEach(c => {
+                    if (c.value !== "Comune") c.checked = (lastSession.langs || []).includes(c.value);
+                });
+            }
+            setTimeout(() => joinGame(true), 150);
+        }
+    };
+
+    function filterLangsBySender(choice) {
+        const lSelect = document.getElementById('current-lang');
+        lSelect.innerHTML = "";
+        let availableLangs = [];
+        if (choice === "MASTER") { availableLangs = ALL_LANGS; } 
+        else if (cachedNPCs[choice]) { availableLangs = cachedNPCs[choice].langs || ["Comune"]; }
+        availableLangs.forEach(l => { lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`; });
+    }
+
+    function openSpawnModal() { document.getElementById('modal-spawn').style.display = 'flex'; npcTempPhoto = null; }
+    function closeSpawnModal() { document.getElementById('modal-spawn').style.display = 'none'; }
+
+    async function spawnNPC() {
+        const name = document.getElementById('npc-name').value.trim();
+        const title = document.getElementById('npc-title').value.trim();
+        const type = document.getElementById('npc-type').value;
+        const hp = parseInt(document.getElementById('npc-hp').value) || 10;
+        const ac = parseInt(document.getElementById('npc-ac').value) || 10;
+        const count = parseInt(document.getElementById('npc-count').value) || 1;
+        const langs = Array.from(document.querySelectorAll('.npc-lang-check:checked')).map(c => c.value);
+        if(!name) return alert("Inserisci un nome!");
+        let finalPhoto = npcTempPhoto || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+        for(let i=1; i<=count; i++) {
+            const finalName = count > 1 ? `${name} ${i}` : name;
+            campaignRef.child('players').child(finalName).set({
+                name: finalName, photo: finalPhoto, type: type, info: title, hp: hp, hpMax: hp, ac: ac, init: 0, langs: langs, cond: ""
+            });
+        }
+        closeSpawnModal();
+    }
+
+    function openInitModal() {
+        const container = document.getElementById('init-list-container');
+        container.innerHTML = "";
+        Object.values(cachedNPCs).forEach(p => {
+            container.innerHTML += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                <span style="color:white; flex:1; font-size:0.9rem;">${p.name}</span>
+                <input type="number" class="init-input" data-name="${p.name}" value="${p.init || 0}" style="width:60px; margin:0; padding:5px;">
+            </div>`;
+        });
+        document.getElementById('modal-init').style.display = 'flex';
+    }
+
+    function confirmIniziativa() {
+        const inputs = document.querySelectorAll('.init-input');
+        let initData = [];
+        
+        inputs.forEach(inp => {
+            const name = inp.dataset.name;
+            const val = parseInt(inp.value) || 0;
+            campaignRef.child('players').child(name).update({ init: val });
+            initData.push({ name: name, val: val });
+        });
+        
+        initData.sort((a, b) => b.val - a.val);
+        
+        let initText = "⚔️ <strong>Inizia il combattimento! Ordine di Iniziativa:</strong> ⚔️<br>";
+        initData.forEach((item, index) => {
+            initText += `${index + 1}) ${item.name}, iniziativa ${item.val}<br>`;
+        });
+        
+        campaignRef.child('messages').push({
+            sender: me.name, senderRole: 'master', photo: me.photo, 
+            text: initText, lang: "Comune", to: 'ALL', time: Date.now()
+        });
+
+        document.getElementById('modal-init').style.display = 'none';
+    }
+
+    function nextRound() {
+        currentRound++;
+        const masterName = me.role === 'master' ? me.name : "Master";
+        campaignRef.child('messages').push({
+            sender: masterName, senderRole: 'master', photo: me.photo, 
+            text: `ROUND ${currentRound}`, lang: "Comune", to: 'ALL', time: Date.now(), isRound: true
+        });
+    }
+
+    function endCombat() {
+        currentRound = 0;
+        Object.values(cachedNPCs).forEach(p => { campaignRef.child('players').child(p.name).update({ init: 0 }); });
+        
+        campaignRef.child('messages').push({
+            sender: me.name, senderRole: 'master', photo: me.photo, 
+            text: "🏳️ Il combattimento è finito. 🏳️", lang: "Comune", to: 'ALL', time: Date.now()
+        });
+    }
+
+    function playTavernBell() {
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            const ctx = new Ctx();
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+            osc1.type = 'sine'; osc1.frequency.value = 440;
+            osc2.type = 'sine'; osc2.frequency.value = 660;
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+            osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
+        } catch (_) {}
+    }
+
+    function translateText(text, lang) {
+        if (lang === "Comune" || !DICTIONARY[lang]) return text;
+        const words = text.split(" ");
+        return words.map(w => {
+            const dict = DICTIONARY[lang] || ["*mumble*"];
+            return dict[Math.floor(Math.random() * dict.length)] + (w.length > 4 ? "'" + dict[0] : "");
+        }).join(" ") + "?";
+    }
+
+    async function compressImg(file) {
+        return new Promise(res => {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = e => {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); const size = 120;
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, size, size);
+                    res(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            };
+        });
+    }
+
+    async function joinGame(isAuto = false) {
+        me.name = document.getElementById('user-name').value.trim();
+        me.code = document.getElementById('camp-code').value.toUpperCase().trim();
+        me.role = document.getElementById('user-role').value;
+        if(!me.name || !me.code) return alert("Dati incompleti!");
+        document.getElementById('silent-wake-lock').play().catch(()=>{});
+        if(!isAuto) {
+            me.info = document.getElementById('p-race-class').value;
+            me.hpMax = parseInt(document.getElementById('p-hp').value) || 10;
+            me.hp = me.hpMax;
+            me.ac = document.getElementById('p-ac').value || 10;
+            me.langs = Array.from(document.querySelectorAll('.lang-check:checked')).map(c => c.value);
+            const f = document.getElementById('user-photo').files[0];
+            if(f) me.photo = await compressImg(f);
+            saveToVault({name: me.name, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs});
+        }
+        
+        saveRecent(me.code);
+
+        if(me.role === 'master') { 
+            me.langs = [...ALL_LANGS]; 
+            document.getElementById('btn-settings').style.display = 'none';
+        }
+        const lSelect = document.getElementById('current-lang');
+        lSelect.innerHTML = "";
+        me.langs.forEach(l => lSelect.innerHTML += `<option value="${l}">Lingua: ${l}</option>`);
+        document.getElementById('login-ui').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        if (me.role === 'master') {
+            document.getElementById('master-controls').style.display = 'flex';
+	}	
+        document.getElementById('display-name').innerText = me.name;
+        document.getElementById('display-code').innerText = me.code;
+        campaignRef = db.ref('campaigns/'+me.code);
+        localStorage.setItem('last_session', JSON.stringify({ code: me.code, name: me.name, role: me.role, photo: me.photo, info: me.info, hpMax: me.hpMax, ac: me.ac, langs: me.langs }));
+        if(me.role === 'master') {
+            document.getElementById('master-panel').classList.remove('hidden');
+            document.getElementById('master-only-ui').classList.remove('hidden');
+	    document.getElementById('master-controls').style.display = 'flex';
+        } else {
+            document.getElementById('player-whisper-ui').classList.remove('hidden');
+            campaignRef.child('players').child(me.name).update({ name: me.name, photo: me.photo, type: 'PC', info: me.info, hp: me.hp, hpMax: me.hpMax, ac: me.ac, init: 0, langs: me.langs, cond: "" });
+        }
+        setupSync();
+        preventPullRefresh();
+    }
+
+    // IL BLOCCO DEFINITIVO DEL REFRESH
+    function preventPullRefresh() {
+        // 1. Blocco Globale: Impedisce lo scroll di pagina intercettando i tocchi non scrollabili
+        document.addEventListener('touchmove', function(e) {
+            const target = e.target;
+            const scrollable = target.closest('#chat-flow, .modal-content, #lang-selection, #npc-lang-selection, #multi-selector, .vault-container, #party-bar');
+            
+            // Se l'utente tocca un'area non fatta per scorrere, si blocca l'azione
+            if (!scrollable) {
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
+
+            // Se proviamo a trascinare verso il basso ma siamo già a 0 (periferia refresh)
+            const isScrollingDown = e.touches[0].clientY > (scrollable.lastY || e.touches[0].clientY);
+            scrollable.lastY = e.touches[0].clientY;
+
+            if (scrollable.scrollTop <= 1 && isScrollingDown) {
+                if (e.cancelable) e.preventDefault(); // Niente rotellina!
+            }
+            
+        }, { passive: false });
+
+        // 2. Trucco del Pixel sugli elementi Scrollabili (non tocca mai lo zero)
+        document.addEventListener('touchstart', function(e) {
+            const scrollable = e.target.closest('#chat-flow, .modal-content, #lang-selection, #npc-lang-selection, #multi-selector, .vault-container, #party-bar');
+            if (scrollable) {
+                scrollable.lastY = e.touches[0].clientY;
+                if (scrollable.scrollTop <= 0) scrollable.scrollTop = 1;
+                if (scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight) {
+                    scrollable.scrollTop = scrollable.scrollHeight - scrollable.clientHeight - 1;
+                }
+            }
+        }, { passive: true });
+    }
+
+    let syncJoinTime = 0;
+    function setupSync() {
+        syncJoinTime = Date.now();
+        campaignRef.child('players').on('value', snap => {
+            const bar = document.getElementById('party-bar'); bar.innerHTML = "";
+            const sel = document.getElementById('msg-recipient');
+            const pSel = document.getElementById('player-msg-recipient');
+            const multi = document.getElementById('multi-selector');
+            const senderChoice = document.getElementById('sender-choice');
+            const ps = snap.val() || {};
+            cachedNPCs = ps; 
+            const currentChoice = senderChoice ? senderChoice.value : "MASTER";
+            if(senderChoice) senderChoice.innerHTML = '<option value="MASTER">Parla come: MASTER</option>';
+            if(sel) sel.innerHTML = '<option value="ALL">Destinatario: TUTTI</option><option value="MULTI">SUSSURRO MULTIPLO</option>';
+            if(pSel) pSel.innerHTML = '<option value="ALL">A: TUTTI</option>';
+            if(multi) multi.innerHTML = "";
+            Object.values(ps).sort((a,b)=> (b.init||0)-(a.init||0)).forEach(p => {
+                const characterPhoto = p.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+                if(me.role === 'master' && (p.type === 'NPC' || p.type === 'BOSS')) senderChoice.innerHTML += `<option value="${p.name}">Parla come: ${p.name}</option>`;
+                if(p.name !== me.name) {
+                    if(me.role === 'master' && p.type !== 'NPC' && p.type !== 'BOSS') {
+                        sel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
+                        multi.innerHTML += `<label class="check-item"><input type="checkbox" class="whisper-check" value="${p.name}"> ${p.name}</label>`;
+                    }
+                    if(me.role === 'player' && p.type === 'PC') pSel.innerHTML += `<option value="${p.name}">Sussurra a: ${p.name}</option>`;
+                }
+                const ratio = p.hp / p.hpMax;
+                let filter = "none";
+                if (p.hp <= 0) filter = "grayscale(100%) brightness(0.5)";
+                const skull = p.hp <= 0 ? "💀" : "";
+                let condHtml = "";
+                if(p.cond) p.cond.split(",").filter(c => c.trim() !== "").forEach(c => condHtml += `<span class="cond-badge">${c}</span>`);
+                
+                let showStats = (p.type === 'PC' || me.role === 'master');
+                
+                // MODIFICA: Solo il Master ha il puntatore cliccabile sulle stats
+                let cursorStyle = me.role === 'master' ? 'cursor:pointer' : '';
+                
+                let stats = showStats ? `<br><small style="color:green; ${cursorStyle}" onclick="openManagePG('${p.name}')">
+                             ${p.info || ''} | ${p.hp}/${p.hpMax}PF | CA:${p.ac}</small>` : `<br><small style="color:green">${p.info || ''}</small>`;
+                if(p.init > 0) stats += ` <small style="color:red;">Init:${p.init}</small>`;
+                
+                let extraClass = (p.type === 'NPC' ? 'npc-tag' : (p.type === 'BOSS' ? 'npc-tag boss-tag' : ''));
+                
+                bar.innerHTML += `<div class="pg-tag ${extraClass}">
+                    ${(me.role==='master')?`<button onclick="campaignRef.child('players').child('${p.name}').remove()" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border-radius:50%;border:none;width:18px;cursor:pointer">×</button>`:''}
+                    <div class="avatar-container">
+                        <img src="${characterPhoto}" class="avatar-circle" style="filter: ${filter}">
+                        <div class="hp-overlay" style="background: rgba(255,0,0,${(1-ratio)*0.6})"></div>
+                    </div>
+                    <div><strong>${skull}${p.name}</strong>${stats}<br>${condHtml}</div>
+                </div>`;
+            });
+            if(senderChoice) senderChoice.value = currentChoice;
+        });
+
+campaignRef.child('messages').limitToLast(40).on('child_added', snap => {
+            const m = snap.val();
+            const k = snap.key; // ID del messaggio per il tasto cancella
+
+            const knowsLang = me.langs && me.langs.includes(m.lang);
+            // Il Master vede tutto, i player vedono solo i messaggi per loro o per tutti
+            const isToMe = me.role === 'master' || m.to === 'ALL' || m.to === me.name || m.sender === me.name || (Array.isArray(m.to) && m.to.includes(me.name));
+
+            if(isToMe) {
+                // Campanello per i nuovi messaggi degli altri
+                const isNewMsg = m.time > syncJoinTime + 500;
+                if (isNewMsg && m.sender !== me.name) {
+                    if (typeof playTavernBell === "function") playTavernBell();
+                }
+
+                const f = document.getElementById('chat-flow');
+                const d = document.createElement('div'); d.className = 'chat-bubble';
+		d.id = "msg-" + k;
+                
+                const tag = m.to !== 'ALL' && !m.isRound ? `<span style="color:#9c27b0;font-size:0.7rem;"> [sussurro]</span>` : '';
+                const lTag = m.lang !== "Comune" ? `<span style="color:var(--gold);font-size:0.7rem;"> [${m.lang}]</span>` : '';
+                const timeStr = new Date(m.time).getHours().toString().padStart(2, '0') + ":" + new Date(m.time).getMinutes().toString().padStart(2, '0');
+                
+                let bgColor = "rgba(255,255,255,0.05)";
+                let textColor = 'inherit';
+                if(m.isRound) { bgColor = "var(--gold)"; textColor = "black"; }
+                else if(m.type === 'damage') textColor = "#ff4444";
+                else if(m.type === 'heal') textColor = "#4444ff";
+                else if(m.type === 'cond') textColor = "#44ff44";
+                else if(m.senderRole === 'master') textColor = "#ffca28";
+                else if(m.senderRole === 'npc') textColor = "#ef9a9a";
+
+                // Gestione Testo e Lingue
+                let displayMsg = m.text || "";
+                if(!knowsLang && m.lang !== "Comune") {
+                    displayMsg = "<i>(Lingua sconosciuta: " + m.lang + ")</i>";
+                }
+
+                // Gestione Allegati (Foto e Audio)
+                let attachment = "";
+                if (m.imageUrl) attachment = `<br><img src="${m.imageUrl}" class="chat-image-attachment" onclick="openLightbox('${m.imageUrl}')">`;
+                if (m.audioUrl) attachment = `<br><audio controls src="${m.audioUrl}" style="width:100%; margin-top:5px;"></audio>`;
+                
+                // Tasto Cancella (Master Only)
+                let deleteBtn = (me.role === 'master') ? `<span class="del-msg" onclick="deleteMsg('${k}')" style="margin-left:8px; cursor:pointer; opacity:0.7;">🗑️</span>` : "";
+                
+                d.innerHTML = `
+                    <img src="${m.photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="chat-avatar">
+                    <div class="chat-text" style="background:${bgColor}; color:${textColor}">
+                        <strong>${m.sender}${tag}${lTag} <span class="chat-time" style="font-size:0.7rem; opacity:0.6;">${timeStr}</span> ${deleteBtn}</strong>
+                        <br>${displayMsg}${attachment}
+                    </div>`;
+                
+                f.appendChild(d);
+                f.scrollTop = f.scrollHeight;
+            }
+        });
+
+        campaignRef.child('messages').on('value', snap => {
+            if(!snap.exists()) {
+                document.getElementById('chat-flow').innerHTML = "";
+            }
+        });
+campaignRef.child('messages').on('child_removed', snap => {
+            const el = document.getElementById("msg-" + snap.key);
+            if (el) el.remove();
+        });
+
+        // 2. Gestione svuotamento totale (Quello che avevi già, teniamolo)
+        campaignRef.child('messages').on('value', snap => {
+            if(!snap.exists()) {
+                document.getElementById('chat-flow').innerHTML = "";
+            }
+        });
+    }
+
+    // MODIFICA: SOLO IL MASTER PUÒ APRIRE LA GESTIONE!
+    function openManagePG(name) {
+        if(me.role !== 'master') return; // Se non sei master, il click muore qui.
+        currentTargetPG = name;
+        document.getElementById('manage-title').innerText = "Gestione " + name;
+        document.getElementById('modal-manage').style.display = 'flex';
+        showManageAction('MAIN');
+    }
+
+    function showManageAction(action) {
+        document.getElementById('manage-main-menu').classList.add('hidden');
+        document.getElementById('manage-action-input').classList.add('hidden');
+        document.getElementById('manage-conditions-list').classList.add('hidden');
+        if(action === 'MAIN') { document.getElementById('manage-main-menu').classList.remove('hidden'); }
+        else if(action === 'CONDIZIONI') {
+            const list = document.getElementById('manage-conditions-list');
+            list.innerHTML = ""; list.classList.remove('hidden');
+            const currentConds = (cachedNPCs[currentTargetPG].cond || "").split(",").filter(c => c !== "");
+            CONDITIONS.forEach(c => {
+                const has = currentConds.includes(c);
+                list.innerHTML += `<div class="cond-list-item">${c} <button onclick="toggleCondition('${c}')" class="btn-taverna" style="padding:2px 8px; background:${has?'#b71c1c':'#2e7d32'}; color:white">${has?'RIMUOVI':'AGGIUNGI'}</button></div>`;
+            });
+        } else {
+            document.getElementById('manage-action-input').classList.remove('hidden');
+            document.getElementById('manage-value').dataset.mode = action;
+        }
+    }
+
+    function toggleCondition(cond) {
+        let p = cachedNPCs[currentTargetPG];
+        let conds = (p.cond || "").split(",").filter(c => c !== "");
+        if(conds.includes(cond)) { conds = conds.filter(c => c !== cond); }
+        else { conds.push(cond); }
+        const newCond = conds.join(",");
+        
+        const dmName = me.role === 'master' ? me.name : "Dungeon Master";
+        
+        campaignRef.child('players').child(currentTargetPG).update({ cond: newCond });
+        campaignRef.child('messages').push({
+            sender: dmName, senderRole: 'master', photo: me.photo,
+            text: `${currentTargetPG} ora è: ${newCond || 'Normale'}`, lang: "Comune", to: 'ALL', time: Date.now(), type: 'cond'
+        });
+        showManageAction('CONDIZIONI');
+    }
+
+function applyManageAction() {
+        const mode = document.getElementById('manage-value').dataset.mode;
+        const val = parseInt(document.getElementById('manage-value').value) || 0;
+        let p = cachedNPCs[currentTargetPG];
+        let newHp = p.hp;
+        
+        if(mode === 'DANNI') { 
+            newHp -= val; 
+        } else if(mode === 'GUARIGIONE') { 
+            newHp = Math.min(p.hpMax, newHp + val); 
+        }
+        
+        if(newHp < 0) newHp = 0;
+        
+        let customMsg = "";
+        const isPC = (p.type === 'PC'); // Controlla se è un giocatore o un mostro
+
+        if(mode === 'DANNI') {
+            if(newHp <= 0) {
+                // Messaggio di morte/svenimento (uguale per entrambi ma con nomi diversi)
+                if(isPC) {
+                    customMsg = `${p.name} subisce ${val} Danni. PF Attuali 0/${p.hpMax}. ${p.name} cade privo di sensi!`;
+                } else {
+                    customMsg = `${p.name} subisce ${val} Danni. ${p.name} è morto 💀`;
+                }
+            } else {
+                // Messaggio danni standard
+                if(isPC) {
+                    customMsg = `${p.name} subisce ${val} Danni. PF Attuali ${newHp}/${p.hpMax}.`;
+                } else {
+                    // Per NPC non mostriamo i PF totali
+                    customMsg = `${p.name} subisce ${val} Danni.`;
+                }
+            }
+        } else if(mode === 'GUARIGIONE') {
+            // Messaggio guarigione standard
+            if(isPC) {
+                customMsg = `${p.name} recupera ${val} Punti Ferita. PF Attuali ${newHp}/${p.hpMax}.`;
+            } else {
+                // Per NPC non mostriamo i PF totali
+                customMsg = `${p.name} recupera ${val} Punti Ferita.`;
+            }
+        }
+
+        const dmName = me.role === 'master' ? me.name : "Dungeon Master";
+
+        campaignRef.child('players').child(currentTargetPG).update({ hp: newHp });
+        campaignRef.child('messages').push({
+            sender: dmName, 
+            senderRole: 'master', 
+            photo: me.photo,
+            text: customMsg,
+            lang: "Comune", 
+            to: 'ALL', 
+            time: Date.now(), 
+            type: mode === 'DANNI' ? 'damage' : 'heal'
+        });
+        
+        closeManage();
+    }
+
+    function closeManage() { document.getElementById('modal-manage').style.display = 'none'; document.getElementById('manage-value').value = ""; }
+
+    function sendMsg() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if(!text) return;
+        const lang = document.getElementById('current-lang').value;
+        let sender = me.name;
+        let photo = me.photo;
+        let role = me.role;
+        let to = 'ALL';
+
+        if(me.role === 'master') {
+            const sChoice = document.getElementById('sender-choice').value;
+            if(sChoice !== "MASTER") {
+                sender = sChoice;
+                photo = cachedNPCs[sChoice].photo;
+                role = 'npc';
+            }
+            const recipient = document.getElementById('msg-recipient').value;
+            if(recipient === 'MULTI') {
+                to = Array.from(document.querySelectorAll('.whisper-check:checked')).map(c => c.value);
+            } else { to = recipient; }
+        } else {
+            to = document.getElementById('player-msg-recipient').value;
+        }
+
+        campaignRef.child('messages').push({
+            sender: sender, senderRole: role, photo: photo, text: text, lang: lang, to: to, time: Date.now()
+        });
+        input.value = "";
+    }
+
+    function updateWhisperUI(val) {
+        document.getElementById('multi-selector').style.display = (val === 'MULTI' ? 'block' : 'none');
+    }
+
+    function clearChat() {
+        if(confirm("Vuoi cancellare tutta la cronologia?")) {
+            campaignRef.child('messages').remove();
+            document.getElementById('chat-flow').innerHTML = "";
+        }
+    }
+
+    function openSettings() {
+        if(me.role === 'master') return;
+        document.getElementById('set-hp').value = me.hpMax;
+        document.getElementById('set-ac').value = me.ac;
+        document.getElementById('modal-settings').style.display = 'flex';
+    }
+    function closeSettings() { document.getElementById('modal-settings').style.display = 'none'; }
+    function saveSettings() {
+        if(me.role === 'master') return;
+        const newMax = parseInt(document.getElementById('set-hp').value) || me.hpMax;
+        const newAC = parseInt(document.getElementById('set-ac').value) || me.ac;
+        me.hpMax = newMax; me.hp = newMax; me.ac = newAC;
+        campaignRef.child('players').child(me.name).update({ hp: me.hp, hpMax: me.hpMax, ac: me.ac });
+        closeSettings();
+    }
+
+    function exitTavern() {
+        localStorage.removeItem('last_session');
+        location.reload();
+    }
+
+    function saveToVault(p) {
+        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        v = v.filter(x => x.name !== p.name);
+        v.push(p);
+        localStorage.setItem('dd_vault', JSON.stringify(v));
+        loadVault();
+    }
+
+    function loadVault() {
+        const box = document.getElementById('pg-vault');
+        const v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        box.innerHTML = "";
+        v.forEach(p => {
+            const d = document.createElement('div'); d.className = 'vault-card';
+            d.innerHTML = `<span class="del-vault" onclick="event.stopPropagation(); deleteVault('${p.name}')">×</span>
+                <img src="${p.photo}"><div>${p.name}</div>`;
+            d.onclick = () => {
+                document.getElementById('user-name').value = p.name;
+                document.getElementById('p-race-class').value = p.info;
+                document.getElementById('p-hp').value = p.hpMax;
+                document.getElementById('p-ac').value = p.ac;
+                me.photo = p.photo;
+                document.querySelectorAll('.lang-check').forEach(c => {
+                    if(c.value !== "Comune") c.checked = p.langs.includes(c.value);
+                });
+            };
+            box.appendChild(d);
+        });
+    }
+
+    function deleteVault(name) {
+        let v = JSON.parse(localStorage.getItem('dd_vault') || '[]');
+        v = v.filter(x => x.name !== name);
+        localStorage.setItem('dd_vault', JSON.stringify(v));
+        loadVault();
+    }
+
+    function saveRecent(code) {
+        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        r = r.filter(x => x !== code);
+        r.unshift(code);
+        if(r.length > 5) r.pop();
+        localStorage.setItem('recent_rooms', JSON.stringify(r));
+        updateRecentUI();
+    }
+
+    function updateRecentUI() {
+        const r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        const box = document.getElementById('recent-box');
+        const list = document.getElementById('recent-list');
+        if(r.length > 0) {
+            box.classList.remove('hidden');
+            list.innerHTML = `<div style="font-size:0.7rem; color:var(--gold); margin-bottom:5px;">Stanze recenti:</div>`;
+            r.forEach(code => {
+                list.innerHTML += `<span class="room-chip" onclick="document.getElementById('camp-code').value='${code}'">${code} 
+                    <span class="del-room" onclick="event.stopPropagation(); removeRecent('${code}')">×</span></span>`;
+            });
+        } else { box.classList.add('hidden'); }
+    }
+
+    function removeRecent(code) {
+        let r = JSON.parse(localStorage.getItem('recent_rooms') || '[]');
+        r = r.filter(x => x !== code);
+        localStorage.setItem('recent_rooms', JSON.stringify(r));
+        updateRecentUI();
+    }
+let mediaRecorder; let audioChunks = []; let isRecording = false;
+
+// Gestione Foto
+document.getElementById('chat-photo').addEventListener('change', async (e) => {
+    if(e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image(); img.src = ev.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height, max = 600;
+                if(w > h && w > max) { h *= max/w; w = max; } else if(h > max) { w *= max/h; h = max; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                sendMedia({ imageUrl: canvas.toDataURL('image/jpeg', 0.7), text: "📷 <i>Immagine</i>" });
+            };
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+});
+
+// Gestione File Audio
+document.getElementById('chat-audio-file').addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (ev) => sendMedia({ audioUrl: ev.target.result, text: "🎵 <i>Audio</i>" });
+        reader.readAsDataURL(e.target.files[0]);
+    }
+});
+
+// Registrazione Vocale
+async function toggleRecording() {
+    const btn = document.getElementById('btn-mic');
+    if (!isRecording) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            const reader = new FileReader();
+            reader.onloadend = () => sendMedia({ audioUrl: reader.result, text: "🎤 <i>Vocale</i>" });
+            reader.readAsDataURL(new Blob(audioChunks, { type: 'audio/mp3' }));
+            stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start(); isRecording = true; btn.classList.add('recording-active'); btn.innerText = "⏹️";
+    } else {
+        mediaRecorder.stop(); isRecording = false; btn.classList.remove('recording-active'); btn.innerText = "🎤";
+    }
+}
+
+function sendMedia(data) {
+    campaignRef.child('messages').push({ sender: me.name, senderRole: 'master', photo: me.photo, lang: "Comune", to: 'ALL', time: Date.now(), ...data });
+}
+
+function deleteMsg(id) { if(confirm("Eliminare per tutti?")) campaignRef.child('messages').child(id).remove(); }
+function openLightbox(src) { 
+    document.getElementById('lightbox-img').src = src; 
+    document.getElementById('download-lightbox').href = src;
+    document.getElementById('modal-lightbox').style.display = 'flex'; 
+}
+function closeLightbox() { document.getElementById('modal-lightbox').style.display = 'none'; }
+</script>
+<div id="modal-lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="">
+    <a id="download-lightbox" href="" download="immagine_taverna.jpg" class="btn-taverna" onclick="event.stopPropagation();" style="margin-top: 20px; text-decoration: none; padding: 10px 20px;">💾 Salva in Galleria</a>
+</div>
+</body>
+</html>        .vault-card img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold); object-fit: cover; }
+        .vault-card div { font-size: 0.6rem; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .del-vault { position: absolute; top: -5px; right: 5px; background: #b71c1c; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 12px; line-height: 16px; text-align: center; border: 1px solid var(--gold); z-index: 5; }
+
+        .settings-btn { position: absolute; right: 10px; top: 8px; background: none; border: none; color: var(--amber); font-size: 1.2rem; cursor: pointer; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
+        .modal-content { background: #212121; padding: 20px; border-radius: 8px; border: 2px solid var(--gold); width: 300px; max-height: 90vh; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+        
+        #party-bar { display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.6); overflow-x: auto; min-height: 70px; align-items: center; }
+        .pg-tag { background: var(--parchment); color: #3e2723; border: 2px solid var(--gold); padding: 5px 10px; border-radius: 5px; min-width: 140px; display: flex; align-items: center; gap: 8px; position: relative; flex-shrink: 0; }
+        .npc-tag { border-color: #b71c1c; background: #ef9a9a; }
+        
+        /* Effetto BOSS */
+        .boss-tag { border: 3px solid #ffd700 !important; background: linear-gradient(135deg, #fff3b0 0%, #f5e1b6 50%, #fff3b0 100%); box-shadow: 0 0 10px #ffca28; animation: boss-shine 3s infinite; }
+        @keyframes boss-shine { 0% { filter: brightness(1); } 50% { filter: brightness(1.2); } 100% { filter: brightness(1); } }
+
+        .avatar-container { position: relative; width: 35px; height: 35px; }
+        .avatar-circle { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; transition: filter 0.3s; }
+        .hp-overlay { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; }
+        
+        /* ISOLAMENTO CHAT: Aggiunto min-height: 0 per flessibilità */
+        #chat-flow { 
+            flex: 1; 
+            min-height: 0; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 10px; 
+            background: rgba(0,0,0,0.3); 
+            overscroll-behavior-y: none; 
+            -webkit-overflow-scrolling: touch; 
+            touch-action: pan-y; 
+        }
+        
+        .chat-bubble { display: flex; gap: 8px; margin-bottom: 10px; }
+        .chat-avatar { width: 30px; height: 30px; border-radius: 50%; }.chat-text { 
+    background: rgba(255,255,255,0.05); 
+    padding: 6px 10px; 
+    border-radius: 5px; 
+    max-width: 80%; 
+    font-size: 0.9rem; 
+    border-left: 3px solid transparent; /* Aumentato a 3px per maggiore visibilità */
+    transition: all 0.2s; 
+}
+
+/* Grassetto automatico per Danni e Cure */
+.chat-text[style*="color: rgb(255, 68, 68)"], 
+.chat-text[style*="color: #ff4444"] { 
+    border-left-color: #ff4444 !important; 
+    font-weight: bold;
+    background: rgba(255, 68, 68, 0.1); /* Leggero sfondo rossastro */
+}
+
+.chat-text[style*="color: rgb(68, 68, 255)"], 
+.chat-text[style*="color: #4444ff"] { 
+    border-left-color: #4444ff !important; 
+    font-weight: bold;
+    background: rgba(68, 68, 255, 0.1); /* Leggero sfondo bluastro */
+}
+        .input-area { background: var(--stone); padding: 10px; border-top: 2px solid var(--gold); }
+        .btn-taverna { background: var(--gold); color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        
+        #multi-selector { background: #5d4037; padding: 10px; border: 2px solid var(--gold); margin-bottom: 8px; border-radius: 5px; display: none; max-height: 120px; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; }
+        .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; color: white; font-size: 0.9rem; cursor: pointer; }
+        .chat-time { font-size: 0.65rem; color: #aaa; margin-left: 5px; font-weight: normal; }
+        .hidden { display: none !important; }
+        .recent-rooms { margin-top: 15px; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; border: 1px dashed var(--gold); }
+        .room-chip { display: inline-block; background: var(--stone); color: var(--amber); padding: 4px 8px; margin: 4px 2px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; position: relative; }
+        .del-room { position: absolute; top: -8px; right: -5px; background: #b71c1c; color: white; border-radius: 50%; width: 14px; height: 14px; font-size: 10px; line-height: 14px; text-align: center; border: 1px solid var(--gold); }
+        
+        .cond-badge { font-size: 0.6rem; background: #b71c1c; color: white; padding: 1px 4px; border-radius: 3px; margin-right: 2px; display: inline-block; margin-top: 2px; }
+        .lang-select { background: #3e2723; color: var(--amber); border: 1px solid var(--gold); font-size: 0.7rem; padding: 2px; margin-bottom: 5px; border-radius: 4px; }
+
+        .manage-option { display: block; background: #444; color: white; padding: 10px; margin: 5px 0; border-radius: 4px; cursor: pointer; text-align: left; border: 1px solid #666; }
+        .manage-option:hover { background: #555; }
+        .cond-list-item { padding: 5px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; color: white; }
+        
+        .lang-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; color: white; font-size: 0.9rem; }
+        .lang-row input { flex-shrink: 0; margin: 0; vertical-align: middle; width: 18px; height: 18px; }
     </style>
 </head>
 <body>
