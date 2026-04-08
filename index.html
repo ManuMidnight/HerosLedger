@@ -348,21 +348,30 @@ audio { max-width: 100%; height: 35px; margin-top: 8px; }
     const CONDITIONS = ["Accecato", "Affascinato", "Afferrato", "Assordato", "Avvelenato", "Incapacitato", "Invisibile", "Paralizzato", "Pietrificato", "Prono", "Spaventato", "Stordito", "Trattenuto", "Indebolito"];
 
     const DICTIONARY = {
-        "Orchesco": ["Grush", "nik", "terk", "ah", "nar", "bor", "zug"],
-        "Elfico": ["Elia", "val", "shannar", "mora", "lyth", "ae"],
-        "Nanico": ["Khazad", "dum", "baruk", "ai", "menu", "rok"],
-        "Draconico": ["Vith", "dur", "darastrix", "ignis", "irlyth"],
-        "Abissale": ["Gh’ul", "nak", "kazz", "shur", "t’ghul"],
-        "Infernale": ["Xas", "vile", "mor", "druk", "zehl"],
-        "Gigante": ["Thrym", "jotun", "haug", "stolt", "fisk"],
-        "Gnomesco": ["Boddynock", "glitter", "zook", "turen", "wrenn"],
-        "Goblin": ["Riz", "gark", "snut", "kol", "vark", "titch"],
-        "Halfling": ["Meri", "pippin", "leaf", "tea", "hill", "burr"],
-        "Celestiale": ["Aureos", "lux", "divin", "seraph", "ethereal"],
-        "Silvano": ["Faen", "leaf", "moss", "glade", "whisper", "dew"],
-        "Sottocomune": ["Zar", "drow", "under", "dark", "deep", "void"]
+        "Orchesco": ["Grush", "nik", "terk", "ah", "nar", "bor", "zug", "lok'", "tar", "ogar", "anuk", "dakka", "grak", "morg", "thokk", "uruk", "vark", "glob", "snaga", "magar", "lub", "osh", "krimp", "prak", "shara", "thrak", "ghash", "glob", "snat", "urgu", "grat", "burz", "dug", "skai", "sha", "mat", "ish", "stark", "bhak", "ronk", "naug", "shau", "throk", "uksh", "dar", "kull", "rot", "dreg", "mush", "zuk", "hunda", "gonk", "falg", "zog"],
+        "Elfico": ["Elia", "val", "shannar", "mora", "lyth", "ae", "mellon", "elen", "ennyn", "suilad", "amil", "namárië", "vanimelda", "ithil", "anor", "galad", "lorien", "meliamne", "queta", "silevi", "tari", "vanim", "yava", "esta", "alae", "aman", "calen", 
+    "dur", "elen", "farea", "gond", "hyar", "iaur", "kili", "lin", "maeth", "nen", "ost", "palan", "rim", "thal", "uial", "vere", "wilwar", "xali", "yen", "zila", "aiwen", "beleg", "cuivie", "dagor", "ercham", "findo", "glir", "heru", "isilm", " luth", "malle", "naur", "olore", "pitya", "rime", "sinda", "taure", "umbar", "vanya", "wen", "yares"],
+        "Nanico": ["Khazad", "dum", "baruk", "ai", "menu", "rok", "baraz", "dreng", "raki-zharr", "umgi", "umgak", "duergar", "thror", "moria", "grim", "storn", "krag", "drak", "tor", "hura", "lodurr", "vund", "murd", "azagh", "balin", "dwalin", "fundin", "gimli", "horin", "ibun", "kili", "lonin", "mim", "nori", "orin", "thorin", "ulinn", "vark", "whur", "zagh", "bak", "clank", "druk", "fang", "gorn", "hald", "iron", "jurn", "kuld", "lang", "mork", "nund", "obur", "pulk", "raz", "skrag", "tharn", "und", "vorg", "wulf", "xur", "yul", "zorn", "thrain", "bund", "frund"],
+        "Draconico": ["Vith", "dur", "darastrix", "ignis", "irlyth", "aryte", "baeshra", "caex", "geth", "kosj", "orn", "rhogar", "sveust", "tiamat", "verthicha", "vutha", "zymu", "arcad", "baham", "char", "drako", "exar", "faze", "glar", "hiss", "iox", "jhar", " korth", " lorth", "morn", "nix", "oxis", "pax", "qhar", "rax", "sark", "thrax", "urth", "vark", "wrath", "xar", "yoth", "zura", "dovah", "odah", "viing", "paarth", "ald", "uin", "mula", "nir", "zul", "krong", "vahl", "lok", "thuun", "diiv", "sah", "klo", "ul", "tiid"],
+        "Abissale": ["Gh’ul", "nak", "kazz", "shur", "t’ghul", "nyarlath", "dagon", "zariel", "pazuzu", "ugli", "mord", "vrok", "beezle", "baph", "glabrez", "maril", "hezrou", "chasme", "dretch", "mane", "nabas", "quasit", "sibrix", "yochlol", "zuggt", "alkilith", "balor", "goristro", "molyde", " shadow", "uzun", "vrock", "xill", "yagnol", "Zuggtmoy", "Juiblex", "Fra-urb", "Kostch", "Baphom", "Orcus", "Grazzt", "Demogor", "Lolth", "Eltab", "Malcan", "Pazuz", "Sessin", "Vucari", "Pale", "Night", "Umbra"],
+        "Infernale": ["Xas", "vile", "mor", "druk", "zehl", "belial", "asmod", "dis", "stygia", "malebolge", "avernus", "cania", "nessus", "minauros", "phleg", "erebus", "adramm", "baal", "barbat", "glasya", "levist", "mammon", "mephist", "moloch", "tiama", "utukku", "zaur", "beherit", "gusion", "pruflas", "scox", "valac", "zagan", "ammut", "euryn", "leth", "styx", "ocytus", "pyri", "tartar", "vassag", "sitri", "eligos", "malphas", "bathin", "saleos", "aim", "bun", "ronove", "berith", "astar"],
+        "Gigante": ["Thrym", "jotun", "haug", "stolt", "fisk", "ordning", "skye", "uvar", "ise", "maut", "wyrm", "fogo", "gurt", "heim", "kriga", "svart", "vinter", "blod", "fjell", "hammer", "is", "kald", "konge", "ovur", "skrekk", "storm", "torden", "ulv", "vakt", "varg", "baat", "drikk", "eter", "fjand", "gave", "hjerte", "jord", "kjempe", "liv", "makt", "natt", "ord", "prakt", "rust", "skjold", "tann", "uven", "venn", "vond", "oekse"],
+        "Gnomesco": ["Boddynock", "glitter", "zook", "turen", "wrenn", "nackle", "fipple", "widget", "gizmo", "sprocket", "bingo", "dazzle", "quill", "zap", "nib", "pocket", "tinker", "cog", "wheel", "spring", "bolt", "fizz", "pop", "bang", "click", "whiz", "hum", "buzz", "spark", "steam", "pipe", "gear", "crank", "lever", "button", "dial", "lens", "glass", "dust", "gem", "gold", "silver", "copper", "brass", "tin", "iron", "steel", "coal", "fire", "smoke"],
+        "Goblin": ["Riz", "gark", "snut", "kol", "vark", "titch", "maggot", "rat", "filth", "shank", "stab", "bite", "yell", "hide", "sneak", "grub", "stink", "scum", "muck", "slime", "ooze", "slug", "bug", "flea", "lice", "tick", "scratch", "itch", "burn", "acid", 
+    "bone", "skull", "tooth", "claw", "tail", "ear", "nose", "eye", "blood", "gut", "spit", "puke", "dung", "trash", "scrap", "junk", "rust", "sharp", "dull", "broken"],
+        "Halfling": ["Meri", "pippin", "leaf", "tea", "hill", "burr", "apple", "brandy", "clover", "pudding", "smile", "hearth", "berry", "sunny", "pie", "muffin", "toasty", "bread", "butter", "honey", "jam", "milk", "cheese", "egg", "bacon", "ham", "soup", "stew", "roast", "cake", "cookie", "tart", "sugar", "salt", "pepper", "herb", "flower", "grass", "tree", "river", "brook", "pond", "garden", "farm", "barn", "house", "home", "bed", "chair", "table"],
+        "Celestiale": ["Aureos", "lux", "divin", "seraph", "ethereal", "astra", "elysium", "solas", "virtue", "hallow", "spirit", "nova", "halo", "deva", "archon", "pax", "lumin", "sanctus", "gloria", "bened", "celest", "eterna", "fides", "gratia", "ignis", "justic", "kyrie", "laud",  "mundi", "nihil", "omni", "purus", "quiet", "radius", "stella", "terra", "unitas", "veritas", "vener", "zephyr", "angel", "beat", "clarus", "digni", "exult", "forti", "grandi", "hymn", "immol", "jubil"],
+        "Silvano": ["Faen", "leaf", "moss", "glade", "whisper", "dew", "legolas", "petal", "thorn", "root", "bark", "twig", "breeze", "bloom", "mist", "nymph", "dryad", "willow", "grove", "fern", "ivy", "oak", "pine", "seed", "sap", "sprig", "berry", "pollen", "thistle", "natar", "eladrin", "fey", "wild", "green", "silver", "moon", "star", "night", "dance", "song", "laugh", "trick", "maze", "hidden", "lost", "found", "dream", "sleep", "wake", "bright", "soft"],
+        "Sottocomune": ["Zar", "drow", "under", "dark", "deep", "void", "lloth", "mycel", "spore", "obsid", "web", "fang", "cavern", "shale", "echo", "silent", "night", "abyss", "glow", "fungi", "stalk", "blind", "hollow", "quaggoth", "svirf", "duergar", "grimlock", "roper", "chull", "ghoul", "wraith", "shade", "velen", "tessal", "xorn", "zorbo", "vorn", "ulith", "mind", "flayer", "elder", "brain", "neoth", "draegl", "yochl", "drider", "behol", "gauth", "specter", "polter"]
     };
-
+function translateText(text, lang) {
+    if (lang === "Comune" || !DICTIONARY[lang]) return text;
+    const words = text.split(" ");
+    return words.map(w => {
+        const dict = DICTIONARY[lang] || ["*mumble*"];
+        return dict[Math.floor(Math.random() * dict.length)] + (w.length > 4 ? "'" + dict[0] : "");
+    }).join(" ") + "?";
+}
     window.onload = () => {
         const langDiv = document.getElementById('lang-selection');
         const npcLangDiv = document.getElementById('npc-lang-selection');
@@ -714,12 +723,14 @@ campaignRef.child('messages').limitToLast(40).on('child_added', snap => {
                 else if(m.senderRole === 'master') textColor = "#ffca28";
                 else if(m.senderRole === 'npc') textColor = "#ef9a9a";
 
-                // Gestione Testo e Lingue
-                let displayMsg = m.text || "";
-                if(!knowsLang && m.lang !== "Comune") {
-                    displayMsg = "<i>(Lingua sconosciuta: " + m.lang + ")</i>";
-                }
-
+let displayMsg = m.text || "";
+if(!knowsLang && m.lang !== "Comune") {
+    // Qui usiamo il dizionario invece della scritta fissa!
+    displayMsg = "<i>[" + m.lang + "]: " + translateText(m.text, m.lang) + "</i>";
+} else if (m.lang !== "Comune") {
+    // Se la conosci, aggiungiamo comunque l'etichetta della lingua per chiarezza
+    displayMsg = "<b>[" + m.lang + "]</b> " + m.text;
+}
                 // Gestione Allegati (Foto e Audio)
                 let attachment = "";
                 if (m.imageUrl) attachment = `<br><img src="${m.imageUrl}" class="chat-image-attachment" onclick="openLightbox('${m.imageUrl}')">`;
@@ -1028,19 +1039,54 @@ document.getElementById('chat-audio-file').addEventListener('change', (e) => {
 // Registrazione Vocale
 async function toggleRecording() {
     const btn = document.getElementById('btn-mic');
+    
     if (!isRecording) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const reader = new FileReader();
-            reader.onloadend = () => sendMedia({ audioUrl: reader.result, text: "🎤 <i>Vocale</i>" });
-            reader.readAsDataURL(new Blob(audioChunks, { type: 'audio/mp3' }));
-            stream.getTracks().forEach(t => t.stop());
-        };
-        mediaRecorder.start(); isRecording = true; btn.classList.add('recording-active'); btn.innerText = "⏹️";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Determina il formato supportato dal dispositivo (fondamentale per mobile)
+            let mimeType = 'audio/webm'; // Standard Android
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/mp4'; // Standard iOS/Safari
+            }
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const reader = new FileReader();
+                const audioBlob = new Blob(audioChunks, { type: mimeType });
+                
+                reader.onloadend = () => {
+                    sendMedia({ 
+                        audioUrl: reader.result, 
+                        text: "🎤 <i>Messaggio Vocale</i>" 
+                    });
+                };
+                reader.readAsDataURL(audioBlob);
+                
+                // Chiude il microfono correttamente
+                stream.getTracks().forEach(t => t.stop());
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            btn.classList.add('recording-active');
+            btn.innerText = "⏹️";
+            
+        } catch (err) {
+            console.error("Errore microfono:", err);
+            alert("Per registrare devi usare HTTPS e dare i permessi al microfono.");
+        }
     } else {
-        mediaRecorder.stop(); isRecording = false; btn.classList.remove('recording-active'); btn.innerText = "🎤";
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.classList.remove('recording-active');
+        btn.innerText = "🎤";
     }
 }
 
